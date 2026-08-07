@@ -88,7 +88,7 @@ function RoleSwitcher() {
 
   return (
     <div
-      className="hidden items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5 sm:flex"
+      className="flex items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5"
       role="group"
       aria-label="Demo user"
     >

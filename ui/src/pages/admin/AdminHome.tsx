@@ -15,8 +15,6 @@ export function AdminHome() {
 
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
-  const [quorumInput, setQuorumInput] = useState(String(config.quorumPercent));
-  const [approvalsInput, setApprovalsInput] = useState(String(config.approvalsRequired));
 
   const addMember = () => {
     const name = newName.trim();
@@ -57,26 +55,6 @@ export function AdminHome() {
     }
     dispatch({ type: "REMOVE_MEMBER", id });
     toast(`${name} revoked from the registry.`, "success");
-  };
-
-  const saveQuorum = () => {
-    const pct = Number(quorumInput);
-    if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-      toast("Quorum percent must be between 1 and 100.", "error");
-      return;
-    }
-    dispatch({ type: "SET_QUORUM", percent: pct });
-    toast(`Quorum set to ${pct}%.`, "success");
-  };
-
-  const saveApprovals = () => {
-    const n = Number(approvalsInput);
-    if (!Number.isFinite(n) || n < 1 || n > 100) {
-      toast("Approvals required must be 1..100.", "error");
-      return;
-    }
-    dispatch({ type: "SET_APPROVALS", required: n });
-    toast(`Stage approval threshold set to ${n}.`, "success");
   };
 
   const removalHint = useMemo(() => {
@@ -121,8 +99,8 @@ export function AdminHome() {
         <Stat label="Approvals / stage" value={config.approvalsRequired} hint="reviewers required" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+      <div className="mt-6">
+        <Card>
           <CardHeader
             title="Member registry"
             subtitle={`${config.members.length} members · identities stored as Merkle-tree commitments`}
@@ -210,55 +188,6 @@ export function AdminHome() {
             </p>
           ) : null}
         </Card>
-
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader
-              title="Voting quorum"
-              subtitle="Percent of members that must vote to reach quorum"
-            />
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                min={1}
-                max={100}
-                value={quorumInput}
-                onChange={(e) => setQuorumInput(e.target.value)}
-                aria-label="Quorum percent"
-              />
-              <Button variant="secondary" onClick={saveQuorum}>
-                Save
-              </Button>
-            </div>
-            <p className="mt-3 text-[12px] text-muted">
-              Quorum math is cross-multiplied like the contract: votes × 100 ≥ members × percent.
-            </p>
-          </Card>
-
-          <Card>
-            <CardHeader
-              title="Stage approvals"
-              subtitle="Reviewers that must approve each milestone stage"
-            />
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                min={1}
-                max={100}
-                value={approvalsInput}
-                onChange={(e) => setApprovalsInput(e.target.value)}
-                aria-label="Approvals required per stage"
-              />
-              <Button variant="secondary" onClick={saveApprovals}>
-                Save
-              </Button>
-            </div>
-            <p className="mt-3 text-[12px] text-muted">
-              Reviewers required per milestone stage. Keep it at or below the member
-              count so stages can actually be approved.
-            </p>
-          </Card>
-        </div>
       </div>
     </div>
   );
