@@ -1,0 +1,14 @@
+{
+  "name": "@govfund/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "compact compile -- --skip-zk src/index.compact src/managed/govfund",
+    "compile:zk": "compact compile -- src/index.compact src/managed/govfund"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "typescript": "^6.0.3"
+  }
+}

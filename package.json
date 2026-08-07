@@ -1,0 +1,15 @@
+{
+  "name": "govfund",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "contract",
+    "api"
+  ],
+  "scripts": {
+    "compile": "npm run compile --workspace contract",
+    "compile:zk": "npm run compile:zk --workspace contract",
+    "typecheck": "npm run typecheck --workspace api"
+  }
+}

@@ -1,0 +1,74 @@
+// ------------------------------- Types ------------------------------------
+
+export enum ProjectStatus {
+  Voting,
+  Selected,
+  InProgress,
+  Completed,
+  Cancelled,
+  Terminated
+}
+
+/**
+ * @description A single vesting stage: the amount released once approved.
+ */
+export struct Stage {
+  amount: Uint<64>;
+}
+
+/**
+ * @description The revealed winning company: its public identity and coin public key.
+ */
+export struct Winner {
+  pk: Bytes<32>;
+  coinPk: ZswapCoinPublicKey;
+}
+
+/**
+ * @description A company's bid: budget, deposited collateral, committed identity, stage
+ * schedule and public vote count.
+ */
+export struct Proposal {
+  id: Bytes<32>;
+  projectId: Bytes<32>;
+  budget: Uint<64>;
+  collateral: Uint<64>;
+  companyCommit: Bytes<32>;
+  stages: Vector<60, Stage>;
+  stageCount: Uint<16>;
+  voteCount: Uint<16>;
+}
+
+/**
+ * @description The on-chain state of a single project.
+ */
+export struct ProjectInfo {
+  id: Bytes<32>;
+  title: Opaque<"string">;
+  budget: Uint<64>;
+  status: ProjectStatus;
+  deadline: Uint<64>;
+  fundingDeadline: Uint<64>;
+  collateralRequired: Uint<64>;
+  maxStageRejections: Uint<16>;
+  totalVotes: Uint<16>;
+  leader: Maybe<Bytes<32>>;
+  leaderCount: Uint<16>;
+  winner: Maybe<Bytes<32>>;
+  winnerCompany: Maybe<Winner>;
+  currentStage: Uint<16>;
+  stagePending: Boolean;
+  stageApprovals: Uint<16>;
+  stageRejections: Uint<16>;
+  stageAttempt: Uint<16>;
+  terminateVotes: Uint<16>;
+  disbursed: Uint<64>;
+}
+
+export { Maybe,
+         Either,
+         ZswapCoinPublicKey,
+         ContractAddress,
+         ShieldedCoinInfo,
+         QualifiedShieldedCoinInfo,
+         MerkleTreePath };

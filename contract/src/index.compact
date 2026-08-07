@@ -1,0 +1,948 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+/**
+ * @module GovFund
+ * @description A single contract instance manages many government procurement projects on
+ * Midnight. Government members open projects that companies bid on with a budget and a
+ * stage schedule; the best proposal is selected by an anonymous vote and the winner is paid
+ * out in stages as reviewers approve each milestone.
+ *
+ * The contract has three roles:
+ * - `admin`: deploys the contract and manages the government member registry plus the
+ *   `quorumPercent` and `approvalsRequired` thresholds.
+ * - `government members`: create projects, vote anonymously, review milestone stages, and
+ *   vote to terminate failing projects.
+ * - `companies`: submit budget proposals (identity hidden behind a commitment), deposit a
+ *   collateral, and collect staged payments if selected.
+ *
+ * Per-project lifecycle:
+ * `Voting -> Selected -> InProgress -> Completed`, with `Cancelled` (voting deadline missed
+ * or funding not provided) and `Terminated` (quorum vote; winner collateral slashed to the
+ * `treasury`) as terminal paths.
+ *
+ * @notice Funds are shielded coins of the configured `fundingToken` (e.g. NIGHT), pooled in
+ * the contract. The budget is deposited only *after* a winner is selected and revealed, and a
+ * stage amount is released only once `approvalsRequired` members approve it. `requestPayment`
+ * only opens a stage for review - it never moves funds.
+ *
+ * @notice Voting and stage review are anonymous: membership is proven via committed leaves
+ * (`persistentCommit(pk, salt)`) in a `HistoricMerkleTree` (see the `Membership` module); who
+ * acted is hidden, only counts are public.
+ *
+ * @dev Identities are witness-derived: `pk = persistentHash(pad(32, "govfund:pk:"), sk)` where
+ * `sk` lives only in the actor's private state. Anonymous one-time actions (vote, stage
+ * action, termination) use domain-separated nullifiers over `sk` to prevent replay.
+ *
+ * @dev Quorum is checked via cross-multiplication (`votes * 100 >= memberCount * quorumPercent`)
+ * because Compact has no division operator, and stage arithmetic uses `fold` over the
+ * fixed-size `Vector<60, Stage>` since Compact has no variable vector indexing.
+ */
+
+include "types";
+
+import "./Membership" prefix Mem_;
+
+
+export { Mem_members, Mem_revokedMembers, Mem_memberCount };
+
+export { Mem_activeMemberCount, Mem_isRevoked, Mem_isMember };
+
+// ------------------------------- Ledger -----------------------------------
+
+/**
+ * @description The deployer's public identity (sealed); the only account that can manage
+ * members and thresholds.
+ */
+export sealed ledger admin: Bytes<32>;
+
+/**
+ * @description Percentage of members required to vote for quorum (admin-modifiable).
+ */
+export ledger quorumPercent: Uint<16>;
+
+/**
+ * @description Number of members that must approve a stage before its funds are released
+ * (admin-modifiable).
+ */
+export ledger approvalsRequired: Uint<16>;
+
+/**
+ * @description Shielded token color used for all funds in the contract (sealed).
+ */
+export sealed ledger fundingToken: Bytes<32>;
+
+/**
+ * @description Coin public key that receives slashed collateral and un-released budget (sealed).
+ */
+export sealed ledger treasury: ZswapCoinPublicKey;
+
+/**
+ * @description Map from project id to its `ProjectInfo` state.
+ */
+export ledger projects: Map<Bytes<32>, ProjectInfo>;
+
+/**
+ * @description Map from proposal id to its `Proposal` state.
+ */
+export ledger proposals: Map<Bytes<32>, Proposal>;
+
+/**
+ * @description Per-project set of vote nullifiers, preventing double voting anonymously.
+ */
+export ledger voteNullifiers: Map<Bytes<32>, Set<Bytes<32>>>;
+
+/**
+ * @description Per-project set of stage-action nullifiers, allowing one review per member per
+ * stage attempt.
+ */
+export ledger stageActionNullifiers: Map<Bytes<32>, Set<Bytes<32>>>;
+
+/**
+ * @description Per-project set of termination nullifiers, allowing one termination vote per member.
+ */
+export ledger terminateNullifiers: Map<Bytes<32>, Set<Bytes<32>>>;
+
+/**
+ * @description The pooled shielded fundingToken coin held by the contract.
+ */
+export ledger pot: QualifiedShieldedCoinInfo;
+
+/**
+ * @description Whether the pot currently holds a coin.
+ */
+export ledger potHasCoin: Boolean;
+
+// ------------------------------ Witnesses ---------------------------------
+
+/**
+ * @witness admin_sk
+ * @description Returns the admin's secret key from private state.
+ * @returns {Bytes<32>} sk - The admin secret key.
+ */
+witness admin_sk(): Bytes<32>;
+
+/**
+ * @witness company_sk
+ * @description Returns a company's secret key from private state.
+ * @returns {Bytes<32>} sk - The company secret key.
+ */
+witness company_sk(): Bytes<32>;
+
+/**
+ * @witness company_nonce
+ * @description Returns the company's proposal-commitment nonce.
+ * @returns {Bytes<32>} nonce - The commitment randomness.
+ */
+witness company_nonce(): Bytes<32>;
+
+// ------------------------------- Helpers ----------------------------------
+
+/**
+ * @description Casts a `Uint<16>` to `Bytes<32>` for use in hash domain separators.
+ * @param {Uint<16>} v - The value to convert.
+ * @return {Bytes<32>} - The byte representation of `v`.
+ */
+circuit u16_bytes(v: Uint<16>): Bytes<32> {
+  return (v as Field) as Bytes<32>;
+}
+
+/**
+ * @description Guard: asserts the caller's public identity equals `admin` and returns the pk.
+ * @return {Bytes<32>} pk - The admin's public identity.
+ */
+circuit require_admin(): Bytes<32> {
+  const pk = disclose(Mem_get_public_key(admin_sk()));
+  assert(pk == admin, "Not admin");
+  return pk;
+}
+
+/**
+ * @description Per-member vote nullifier, scoped to a project, to prevent double voting
+ * anonymously.
+ * @param {Bytes<32>} sk - The voter's secret key.
+ * @param {Bytes<32>} projectId - The project being voted on.
+ * @return {Bytes<32>} - The disclosed nullifier.
+ */
+circuit vote_nul(sk: Bytes<32>, projectId: Bytes<32>): Bytes<32> {
+  return disclose(persistentHash<Vector<3, Bytes<32>>>(
+                    [pad(32, "govfund:vote-nul:"), projectId, sk]
+                    ));
+}
+
+/**
+ * @description Per-member stage-action nullifier, scoped to a (stage, attempt), so each member
+ * can review a stage at most once per attempt.
+ * @param {Bytes<32>} sk - The reviewer's secret key.
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Uint<16>} stage - The current stage index.
+ * @param {Uint<16>} attempt - The current review attempt.
+ * @return {Bytes<32>} - The disclosed nullifier.
+ */
+circuit stage_nul(
+          sk: Bytes<32>,
+          projectId: Bytes<32>,
+          stage: Uint<16>,
+          attempt: Uint<16>
+          ): Bytes<32> {
+  return disclose(persistentHash<Vector<5, Bytes<32>>>(
+                    [pad(32, "govfund:stage-act:"),
+                     projectId,
+                     u16_bytes(stage),
+                     u16_bytes(attempt),
+                     sk]
+                    ));
+}
+
+/**
+ * @description Per-member termination nullifier, scoped to a project, so each member votes at
+ * most once.
+ * @param {Bytes<32>} sk - The member's secret key.
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {Bytes<32>} - The disclosed nullifier.
+ */
+circuit terminate_nul(sk: Bytes<32>, projectId: Bytes<32>): Bytes<32> {
+  return disclose(persistentHash<Vector<3, Bytes<32>>>(
+                    [pad(32, "govfund:term-nul:"), projectId, sk]
+                    ));
+}
+
+/**
+ * @description True when `votes` reach the quorum: `votes * 100 >= memberCount * quorumPercent`.
+ * Uses cross-multiplication because Compact has no division operator.
+ * @param {Uint<16>} votes - Number of votes cast.
+ * @return {Boolean} - Whether quorum is met.
+ */
+circuit quorumMet(votes: Uint<16>): Boolean {
+  return (votes as Uint<64>) * 100 >= Mem_memberCount.read() * (quorumPercent as Uint<64>);
+}
+
+/**
+ * @description Sums all stage amounts in a proposal.
+ * @param {Vector<60, Stage>} stages - The proposal's stage schedule.
+ * @return {Uint<64>} - The total budget.
+ */
+circuit sumAll(stages: Vector<60, Stage>): Uint<64> {
+  return fold((acc: Uint<64>, s: Stage): Uint<64> => {
+                return (acc + s.amount) as Uint<64>;
+              },
+              0 as Uint<64>,
+              stages);
+}
+
+/**
+ * @description Returns `[selectedAmount, sumBefore]`: the amount of stage `which`, and the sum
+ * of stages before `which`. Compact cannot index vectors with variables, so this uses `fold`.
+ * @param {Vector<60, Stage>} stages - The proposal's stage schedule.
+ * @param {Uint<16>} which - The stage index to select.
+ * @return {[Uint<64>, Uint<64>]} - The selected amount and the preceding sum.
+ */
+circuit stageInfo(stages: Vector<60, Stage>, which: Uint<16>): [Uint<64>, Uint<64>] {
+  const result = fold((acc: [Uint<16>, Uint<64>, Uint<64>],
+                       s: Stage
+                       ): [Uint<16>, Uint<64>, Uint<64>] => {
+                        const idx = acc[0];
+                        const selected = (idx == which) ? s.amount : acc[1];
+                        const sumBefore = (idx < which) ? (acc[2] + s.amount) as Uint<64> : acc[2];
+                        return [(idx + 1) as Uint<16>, selected, sumBefore];
+                      },
+                      [0 as Uint<16>, 0 as Uint<64>, 0 as Uint<64>],
+                      stages);
+  return [result[1], result[2]];
+}
+
+/**
+ * @description Receives a shielded fundingToken coin into the pooled pot, merging it with any
+ * existing pot coin.
+ * @param {ShieldedCoinInfo} coin - The coin being deposited.
+ * @return {[]} - Empty tuple.
+ */
+circuit acceptCoin(coin: ShieldedCoinInfo): [] {
+  receiveShielded(disclose(coin));
+  if (!potHasCoin) {
+    pot.writeCoin(disclose(coin), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+    potHasCoin = true;
+  } else {
+    pot.writeCoin(
+      mergeCoinImmediate(pot, disclose(coin)),
+      right<ZswapCoinPublicKey, ContractAddress>(kernel.self())
+      );
+  }
+}
+
+/**
+ * @description Sends `amount` of fundingToken from the pot to `recipient`, keeping the change.
+ * @param {ZswapCoinPublicKey} recipient - The recipient's coin public key.
+ * @param {Uint<128>} amount - The amount to send.
+ * @return {[]} - Empty tuple.
+ */
+circuit payCoin(recipient: ZswapCoinPublicKey, amount: Uint<128>): [] {
+  assert(potHasCoin, "Treasury empty");
+  const result = sendShielded(
+                   pot,
+                   left<ZswapCoinPublicKey, ContractAddress>(disclose(recipient)),
+                   disclose(amount)
+                   );
+  if (disclose(result.change.is_some)) {
+    pot.writeCoin(result.change.value, right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+  } else {
+    potHasCoin = false;
+  }
+}
+
+// ------------------------------ Constructor -------------------------------
+
+/**
+ * @description Deploys the contract, sealing the admin identity, funding token color and
+ * treasury, and initializing the modifiable `quorumPercent` and `approvalsRequired` thresholds.
+ * @param {Uint<16>} quorumPercentParam - Initial voting quorum percent (1..100).
+ * @param {Bytes<32>} fundingTokenParam - Shielded token color used for all funds (e.g. NIGHT).
+ * @param {ZswapCoinPublicKey} treasuryParam - Recipient of slashed collateral and un-released budget.
+ * @param {Uint<16>} approvalsRequiredParam - Initial per-stage reviewer threshold (>= 1).
+ */
+constructor(quorumPercentParam: Uint<16>,
+            fundingTokenParam: Bytes<32>,
+            treasuryParam: ZswapCoinPublicKey,
+            approvalsRequiredParam: Uint<16>
+            ) {
+  admin = disclose(Mem_get_public_key(admin_sk()));
+  quorumPercent = disclose(quorumPercentParam);
+  approvalsRequired = disclose(approvalsRequiredParam);
+  fundingToken = disclose(fundingTokenParam);
+  treasury = disclose(treasuryParam);
+  assert(disclose(quorumPercentParam >= 1 && quorumPercentParam <= 100), "Invalid quorum percent");
+  assert(disclose(approvalsRequiredParam >= 1), "Invalid approval threshold");
+}
+
+// ---------------------------- Pure helpers --------------------------------
+
+/**
+ * @description Off-chain helper: derives `pk` from `sk` (also used by the TypeScript side).
+ * @param {Bytes<32>} sk - The secret key.
+ * @return {Bytes<32>} pk - The public identity.
+ */
+export pure circuit publicKeyOf(sk: Bytes<32>): Bytes<32> {
+  return Mem_get_public_key(sk);
+}
+
+/**
+ * @description Off-chain helper: computes a member's committed Merkle leaf from `pk` and `salt`
+ * (also used by the TypeScript side).
+ * @param {Bytes<32>} pk - The member's public identity.
+ * @param {Bytes<32>} salt - The commitment randomness.
+ * @return {Bytes<32>} - The commitment.
+ */
+export pure circuit memberCommit(pk: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<Bytes<32>>(pk, salt);
+}
+
+// --------------------------- Admin circuits --------------------------------
+
+/**
+ * @description Admin adds a government member by inserting their committed identity as a
+ * Merkle leaf.
+ *
+ * Requirements:
+ *
+ * - The caller must be the admin.
+ * - `memberCommit` must not already be revoked.
+ *
+ * @param {Bytes<32>} memberCommit - The member's committed identity (`persistentCommit(pk, salt)`).
+ * @return {[]} - Empty tuple.
+ */
+export circuit addMember(memberCommit: Bytes<32>): [] {
+  require_admin();
+  assert(!disclose(Mem_revokedMembers.member(disclose(memberCommit))), "Member is revoked"); // o sea que si fue removido no puede volver a entrar?
+  Mem_members.insert(disclose(memberCommit));
+  Mem_memberCount.increment(1);
+}
+
+/**
+ * @description Admin revokes a government member. Blocked if the removal would make the
+ * `approvalsRequired` threshold or quorum unreachable with the remaining members.
+ *
+ * Requirements:
+ *
+ * - The caller must be the admin.
+ * - There must be at least one member.
+ * - Quorum and `approvalsRequired` must stay reachable after the removal.
+ *
+ * @param {Bytes<32>} memberCommit - The member's committed identity to revoke.
+ * @return {[]} - Empty tuple.
+ */
+export circuit removeMember(memberCommit: Bytes<32>): [] {
+  require_admin();
+  assert(!disclose(Mem_memberCount.lessThan(1)), "No members");
+  const newCount = (Mem_memberCount.read() - 1) as Uint<64>;
+  assert(disclose(newCount >= (approvalsRequired as Uint<64>)),
+         "Removal would make approvals unreachable"
+         );
+  assert(disclose(quorumMet(newCount as Uint<16>)), "Removal would make quorum unreachable");
+  Mem_revokedMembers.insert(disclose(memberCommit));
+  Mem_memberCount.decrement(1);
+}
+
+/**
+ * @description Admin changes the voting quorum percent.
+ *
+ * Requirements:
+ *
+ * - The caller must be the admin.
+ * - `newPercent` must be within 1..100.
+ *
+ * @param {Uint<16>} newPercent - The new quorum percent.
+ * @return {[]} - Empty tuple.
+ */
+export circuit setQuorumPercent(newPercent: Uint<16>): [] {
+  require_admin();
+  const minOk = disclose(newPercent >= 1);
+  const maxOk = disclose(newPercent <= 100);
+  assert(disclose(minOk && maxOk), "Invalid quorum percent");
+  quorumPercent = disclose(newPercent);
+}
+
+/**
+ * @description Admin changes the per-stage reviewer threshold.
+ *
+ * Requirements:
+ *
+ * - The caller must be the admin.
+ * - `newRequired` must be at least 1 and no larger than the current member count.
+ *
+ * @param {Uint<16>} newRequired - The new reviewer threshold.
+ * @return {[]} - Empty tuple.
+ */
+export circuit setApprovalsRequired(newRequired: Uint<16>): [] {
+  require_admin();
+  const minOk = disclose(newRequired >= 1);
+  const boundOk = disclose((newRequired as Uint<64>) <= Mem_memberCount.read());
+  assert(disclose(minOk && boundOk), "Invalid approval threshold");
+  approvalsRequired = disclose(newRequired);
+}
+
+// --------------------------- Project circuits ------------------------------
+
+/**
+ * @description A government member opens a project in `Voting` phase with its deadlines and
+ * collateral rules.
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project id must not already exist.
+ * - `fundingDeadline` must be after `deadline`, and `deadline` in the future.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Opaque<"string">} title - The project title.
+ * @param {Uint<64>} deadline - Voting deadline (block time); cancel if not finalized by then.
+ * @param {Uint<64>} fundingDeadline - Funding deadline; cancel if not funded by then.
+ * @param {Uint<64>} collateralRequired - Minimum collateral for each proposal.
+ * @param {Uint<16>} maxStageRejections - Rejection limit per stage before requests are blocked.
+ * @return {[]} - Empty tuple.
+ */
+export circuit createProject(
+                 projectId: Bytes<32>,
+                 title: Opaque<"string">,
+                 deadline: Uint<64>,
+                 fundingDeadline: Uint<64>,
+                 collateralRequired: Uint<64>,
+                 maxStageRejections: Uint<16>
+                 ): [] {
+  Mem_require_member();
+  assert(!disclose(projects.member(disclose(projectId))), "Project already exists");
+  assert(disclose(fundingDeadline > deadline), "Funding deadline must be after voting deadline");
+  assert(blockTimeLt(disclose(deadline)), "Deadline must be in the future");
+  assert(disclose(maxStageRejections >= 1), "Invalid max rejections"); // esta bien esto? podriamos usar 0 como inf?
+  const p = ProjectInfo { id: projectId,
+                          title: title,
+                          budget: 0,
+                          status: ProjectStatus.Voting,
+                          deadline: deadline,
+                          fundingDeadline: fundingDeadline,
+                          collateralRequired: collateralRequired,
+                          maxStageRejections: maxStageRejections,
+                          totalVotes: 0,
+                          leader: none<Bytes<32>>(),
+                          leaderCount: 0,
+                          winner: none<Bytes<32>>(),
+                          winnerCompany: none<Winner>(),
+                          currentStage: 0,
+                          stagePending: false,
+                          stageApprovals: 0,
+                          stageRejections: 0,
+                          stageAttempt: 0,
+                          terminateVotes: 0,
+                          disbursed: 0, };
+  projects.insert(disclose(projectId), disclose(p));
+  voteNullifiers.insert(disclose(projectId), default<Set<Bytes<32>>>);
+  stageActionNullifiers.insert(disclose(projectId), default<Set<Bytes<32>>>);
+  terminateNullifiers.insert(disclose(projectId), default<Set<Bytes<32>>>);
+}
+
+/**
+ * @description A company bids a budget and stage schedule, depositing collateral. The
+ * company's identity is hidden behind a commitment and only revealed if it wins.
+ *
+ * Requirements:
+ *
+ * - The project must be in `Voting` phase and before its deadline.
+ * - `budget` must be positive and the stages must sum to it.
+ * - `collateralAmount` must meet the project's `collateralRequired` and match `collateralCoin`.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Bytes<32>} proposalId - The proposal identifier.
+ * @param {Uint<64>} budget - The bid amount.
+ * @param {Uint<64>} collateralAmount - The collateral deposited.
+ * @param {Uint<16>} stageCount - Number of stages used (1..60).
+ * @param {Vector<60, Stage>} stages - The stage schedule; unused slots must be zero.
+ * @param {ShieldedCoinInfo} collateralCoin - The collateral coin (fundingToken).
+ * @return {[]} - Empty tuple.
+ */
+export circuit submitProposal(
+                 projectId: Bytes<32>,
+                 proposalId: Bytes<32>,
+                 budget: Uint<64>,
+                 collateralAmount: Uint<64>,
+                 stageCount: Uint<16>,
+                 stages: Vector<60, Stage>,
+                 collateralCoin: ShieldedCoinInfo
+                 ): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Voting), "Not accepting proposals");
+  assert(blockTimeLt(p.deadline), "Voting deadline passed");
+  assert(!disclose(proposals.member(disclose(proposalId))), "Proposal already exists");
+  assert(disclose(budget > 0), "Budget must be positive");
+  assert(disclose(collateralAmount >= p.collateralRequired), "Collateral below required");
+  assert(disclose(stageCount >= 1 && stageCount <= 60), "Invalid stage count"); // ??
+  assert(disclose(collateralCoin.color == fundingToken), "Wrong token");
+  assert(disclose(collateralCoin.value == (collateralAmount as Uint<128>)), "Collateral mismatch");
+  assert(disclose(sumAll(stages) == budget), "Stages must sum to budget");
+  acceptCoin(collateralCoin);
+  const sk = company_sk();
+  const pk = Mem_get_public_key(sk);
+  const commit = persistentCommit<Bytes<32>>(pk, company_nonce());
+  const prop = Proposal { id: proposalId,
+                          projectId: projectId,
+                          budget: budget,
+                          collateral: collateralAmount,
+                          companyCommit: commit,
+                          stages: stages,
+                          stageCount: stageCount,
+                          voteCount: 0, };
+  proposals.insert(disclose(proposalId), disclose(prop));
+}
+
+/**
+ * @description A government member anonymously casts one vote for a proposal.
+ * The caller proves membership via a Merkle path (identity hidden); a fresh
+ * project-scoped nullifier prevents double voting. Vote counts are public.
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project must be in `Voting` phase and before its deadline.
+ * - `proposalId` must exist and the caller must not have voted already.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Bytes<32>} proposalId - The proposal identifier being voted for.
+ * @return {[]} - Empty tuple.
+ */
+export circuit vote(projectId: Bytes<32>, proposalId: Bytes<32>): [] {
+  const sk = Mem_require_member();
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Voting), "Voting closed");
+  assert(blockTimeLt(p.deadline), "Voting deadline passed");
+  assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
+  const n = vote_nul(sk, projectId);
+  assert(!voteNullifiers.lookup(disclose(projectId)).member(n), "Already voted");
+  voteNullifiers.lookup(disclose(projectId)).insert(n);
+  const prop = proposals.lookup(disclose(proposalId));
+  const newCount = (prop.voteCount + 1) as Uint<16>;
+  proposals.insert(disclose(proposalId), disclose(Proposal { ...prop, voteCount: newCount }));
+  const newTotal = (p.totalVotes + 1) as Uint<16>;
+  const newLeader = (newCount > p.leaderCount) ? some<Bytes<32>>(proposalId) : p.leader;
+  const newLeaderCount = (newCount > p.leaderCount) ? newCount : p.leaderCount;
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p,
+                           totalVotes: newTotal,
+                           leader: newLeader,
+                           leaderCount: newLeaderCount })
+    );
+}
+
+/**
+ * @description After the voting deadline, picks the plurality winner if quorum was reached.
+ *
+ * Requirements:
+ *
+ * - The project must be in `Voting` phase and past its deadline.
+ * - Quorum must be met and at least one vote cast.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit finalizeSelection(projectId: Bytes<32>): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Voting), "Not in voting");
+  assert(blockTimeGte(p.deadline), "Voting deadline not reached");
+  assert(disclose(quorumMet(p.totalVotes)), "Quorum not met");
+  assert(disclose(p.leader.is_some), "No votes cast");
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, status: ProjectStatus.Selected, winner: p.leader })
+    );
+}
+
+/**
+ * @description The winner opens its proposal commitment so funding and vesting can proceed.
+ *
+ * Requirements:
+ *
+ * - The project must be `Selected` with a winner, and not yet revealed.
+ * - `nonce` and the caller's key must match the proposal's `companyCommit`.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Bytes<32>} proposalId - The winning proposal identifier.
+ * @param {Bytes<32>} nonce - The commitment nonce used at submission.
+ * @param {ZswapCoinPublicKey} coinPk - The company's coin public key (receives payments).
+ * @return {[]} - Empty tuple.
+ */
+export circuit revealCompany(
+                 projectId: Bytes<32>,
+                 proposalId: Bytes<32>,
+                 nonce: Bytes<32>,
+                 coinPk: ZswapCoinPublicKey
+                 ): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Selected), "Not selected");
+  const hasWinner = disclose(p.winner.is_some);
+  const isWinning = disclose(p.winner.value == proposalId);
+  assert(disclose(hasWinner && isWinning), "Not the winning proposal");
+  assert(disclose(!p.winnerCompany.is_some), "Winner already revealed");
+  assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
+  const prop = proposals.lookup(disclose(proposalId));
+  const sk = company_sk();
+  const pk = Mem_get_public_key(sk);
+  const commit = persistentCommit<Bytes<32>>(pk, nonce);
+  assert(disclose(commit == prop.companyCommit), "Invalid reveal");
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, winnerCompany: some<Winner>(Winner { pk: pk, coinPk: coinPk }) })
+    );
+}
+
+/**
+ * @description A government member deposits the winner's budget into the contract
+ * (`Selected` -> `InProgress`).
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project must be `Selected` with a revealed winner, and before its funding deadline.
+ * - `depositCoin` must be fundingToken and exactly match the winner's budget.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {ShieldedCoinInfo} depositCoin - The budget coin being deposited.
+ * @return {[]} - Empty tuple.
+ */
+export circuit fundProject(projectId: Bytes<32>, depositCoin: ShieldedCoinInfo): [] {
+  Mem_require_member();
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Selected), "Not selected");
+  assert(disclose(p.winnerCompany.is_some), "Winner not revealed");
+  assert(blockTimeLt(p.fundingDeadline), "Funding deadline passed");
+  assert(disclose(depositCoin.color == fundingToken), "Wrong token");
+  const proposalId = p.winner.value;
+  assert(disclose(proposals.member(proposalId)), "Unknown proposal");
+  const prop = proposals.lookup(proposalId);
+  assert(disclose(depositCoin.value == (prop.budget as Uint<128>)), "Wrong funding amount");
+  acceptCoin(depositCoin);
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, budget: prop.budget, status: ProjectStatus.InProgress })
+    );
+}
+
+/**
+ * @description A company reclaims its collateral by re-opening its commitment. Losers may
+ * withdraw after selection; on cancellation anyone (including the winner) may withdraw. The
+ * winner's collateral is held during the project.
+ *
+ * Requirements:
+ *
+ * - The project must be past the voting phase.
+ * - The proposal must match the commitment and its collateral must not already be withdrawn.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Bytes<32>} proposalId - The proposal identifier.
+ * @param {Bytes<32>} nonce - The commitment nonce used at submission.
+ * @param {ZswapCoinPublicKey} coinPk - Where to send the returned collateral.
+ * @return {[]} - Empty tuple.
+ */
+export circuit withdrawCollateral(
+                 projectId: Bytes<32>,
+                 proposalId: Bytes<32>,
+                 nonce: Bytes<32>,
+                 coinPk: ZswapCoinPublicKey
+                 ): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  const postVote =
+          p.status == ProjectStatus.Selected ||
+          p.status == ProjectStatus.InProgress ||
+          p.status == ProjectStatus.Completed ||
+          p.status == ProjectStatus.Cancelled ||
+          p.status == ProjectStatus.Terminated;
+  assert(disclose(postVote), "Not withdrawable yet");
+  assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
+  const prop = proposals.lookup(disclose(proposalId));
+  assert(disclose(prop.collateral > 0), "Collateral already withdrawn");
+  const isWinner = p.winner.is_some && p.winner.value == proposalId;
+  const winnerHeld = disclose(isWinner) && disclose(p.status != ProjectStatus.Cancelled);
+  assert(disclose(!winnerHeld), "Winner collateral is held");
+  const sk = company_sk();
+  const pk = Mem_get_public_key(sk);
+  const commit = persistentCommit<Bytes<32>>(pk, nonce);
+  assert(disclose(commit == prop.companyCommit), "Invalid reveal");
+  payCoin(coinPk, prop.collateral as Uint<128>);
+  proposals.insert(disclose(proposalId), disclose(Proposal { ...prop, collateral: 0 }));
+}
+
+// --------------------------- Vesting circuits ------------------------------
+
+/**
+ * @description The winner opens the current stage for reviewer approval. No funds move here;
+ * `approveStage` releases the amount once the reviewer threshold is met.
+ *
+ * Requirements:
+ *
+ * - The caller must be the revealed winner.
+ * - The project must be `InProgress` with stages remaining.
+ * - The current stage must not already be pending and rejections must be below the limit.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit requestPayment(projectId: Bytes<32>): [] {
+  const sk = company_sk();
+  const pk = Mem_get_public_key(sk);
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.InProgress), "Not in progress");
+  const revealed = disclose(p.winnerCompany.is_some);
+  const matches = disclose(p.winnerCompany.value.pk == pk);
+  assert(disclose(revealed && matches), "Not the winner");
+  const proposalId = p.winner.value;
+  assert(disclose(proposals.member(proposalId)), "Unknown proposal");
+  const prop = proposals.lookup(proposalId);
+  assert(disclose(p.currentStage < prop.stageCount), "All stages completed");
+  assert(disclose(!p.stagePending), "Payment already requested");
+  assert(disclose(p.stageRejections < p.maxStageRejections), "Max rejections reached");
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p,
+                           stagePending: true,
+                           stageApprovals: 0,
+                           stageAttempt: (p.stageAttempt + 1) as Uint<16>, })
+    );
+}
+
+/**
+ * @description A member approves the pending stage. Once `approvalsRequired` members have
+ * approved, the stage amount is released to the winner and the next stage begins; approving the
+ * final stage marks the project `Completed` and returns the winner's collateral.
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project must be `InProgress` with a pending stage request.
+ * - The caller must not have already acted on this stage attempt.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit approveStage(projectId: Bytes<32>): [] {
+  const sk = Mem_require_member();
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.InProgress), "Not in progress");
+  assert(disclose(p.stagePending), "No payment requested");
+  const proposalId = p.winner.value;
+  assert(disclose(proposals.member(proposalId)), "Unknown proposal");
+  const prop = proposals.lookup(proposalId);
+  assert(disclose(p.currentStage < prop.stageCount), "Out of stages");
+  const n = stage_nul(sk, projectId, p.currentStage, p.stageAttempt);
+  assert(!stageActionNullifiers.lookup(disclose(projectId)).member(n),
+         "Already acted on this stage"
+         );
+  stageActionNullifiers.lookup(disclose(projectId)).insert(n);
+  const info = stageInfo(prop.stages, p.currentStage);
+  const stageAmount = info[0];
+  const newApprovals = (p.stageApprovals + 1) as Uint<16>;
+  if (newApprovals >= approvalsRequired) {
+    payCoin(p.winnerCompany.value.coinPk, stageAmount as Uint<128>);
+    const nextStage = (p.currentStage + 1) as Uint<16>;
+    const newDisbursed = (p.disbursed + stageAmount) as Uint<64>;
+    if (nextStage >= prop.stageCount) {
+      payCoin(p.winnerCompany.value.coinPk, prop.collateral as Uint<128>);
+      projects.insert(
+        disclose(projectId),
+        disclose(ProjectInfo { ...p,
+                               status: ProjectStatus.Completed,
+                               currentStage: nextStage,
+                               stagePending: false,
+                               stageApprovals: 0,
+                               stageRejections: 0,
+                               disbursed: newDisbursed, })
+        );
+    } else {
+      projects.insert(
+        disclose(projectId),
+        disclose(ProjectInfo { ...p,
+                               currentStage: nextStage,
+                               stagePending: false,
+                               stageApprovals: 0,
+                               stageRejections: 0,
+                               disbursed: newDisbursed, })
+        );
+    }
+  } else {
+    projects.insert(
+      disclose(projectId),
+      disclose(ProjectInfo { ...p, stageApprovals: newApprovals })
+      );
+  }
+}
+
+/**
+ * @description A member rejects the pending stage, accumulating toward `maxStageRejections`.
+ * The company may retry with a fresh attempt until the limit is reached.
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project must be `InProgress` with a pending stage request.
+ * - The caller must not have already acted on this stage attempt.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit rejectStage(projectId: Bytes<32>): [] {
+  const sk = Mem_require_member();
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.InProgress), "Not in progress");
+  assert(disclose(p.stagePending), "No payment requested");
+  const proposalId = p.winner.value;
+  assert(disclose(proposals.member(proposalId)), "Unknown proposal");
+  const prop = proposals.lookup(proposalId);
+  assert(disclose(p.currentStage < prop.stageCount), "Out of stages");
+  const n = stage_nul(sk, projectId, p.currentStage, p.stageAttempt);
+  assert(!stageActionNullifiers.lookup(disclose(projectId)).member(n),
+         "Already acted on this stage"
+         );
+  stageActionNullifiers.lookup(disclose(projectId)).insert(n);
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, stageRejections: (p.stageRejections + 1) as Uint<16> })
+    );
+}
+
+// ------------------------- Termination & cancel ----------------------------
+
+/**
+ * @description A member votes to terminate a project. Once quorum is reached the project is
+ * `Terminated`: the winner's collateral is slashed to the treasury and any un-released stage
+ * funds are returned to the treasury.
+ *
+ * Requirements:
+ *
+ * - The caller must be an active government member.
+ * - The project must be `Selected` or `InProgress`.
+ * - The caller must not have voted to terminate already.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit voteTerminate(projectId: Bytes<32>): [] {
+  const sk = Mem_require_member();
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.InProgress || p.status == ProjectStatus.Selected),
+         "Cannot terminate"
+         );
+  const n = terminate_nul(sk, projectId);
+  assert(!terminateNullifiers.lookup(disclose(projectId)).member(n), "Already voted to terminate");
+  terminateNullifiers.lookup(disclose(projectId)).insert(n);
+  const newVotes = (p.terminateVotes + 1) as Uint<16>;
+  if (disclose(quorumMet(newVotes))) {
+    const proposalId = p.winner.value;
+    const prop = proposals.lookup(proposalId);
+    if (p.status == ProjectStatus.InProgress) {
+      const info = stageInfo(prop.stages, p.currentStage);
+      const total = sumAll(prop.stages);
+      const remaining = (total - info[1]) as Uint<64>;
+      payCoin(treasury, remaining as Uint<128>);
+    }
+    payCoin(treasury, prop.collateral as Uint<128>);
+    projects.insert(
+      disclose(projectId),
+      disclose(ProjectInfo { ...p, status: ProjectStatus.Terminated, terminateVotes: newVotes })
+      );
+  } else {
+    projects.insert(disclose(projectId), disclose(ProjectInfo { ...p, terminateVotes: newVotes }));
+  }
+}
+
+/**
+ * @description Anyone cancels a `Voting` project after its deadline if quorum was not reached,
+ * making all collateral refundable.
+ *
+ * Requirements:
+ *
+ * - The project must be `Voting` and past its deadline.
+ * - Quorum must not have been reached.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit cancelProject(projectId: Bytes<32>): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Voting), "Not in voting");
+  assert(blockTimeGte(p.deadline), "Voting deadline not reached");
+  assert(disclose(!quorumMet(p.totalVotes)), "Quorum reached; finalize instead");
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, status: ProjectStatus.Cancelled })
+    );
+}
+
+/**
+ * @description Anyone cancels a `Selected` project that the government failed to fund by its
+ * funding deadline, making all collateral refundable.
+ *
+ * Requirements:
+ *
+ * - The project must be `Selected` and past its funding deadline.
+ *
+ * @param {Bytes<32>} projectId - The project identifier.
+ * @return {[]} - Empty tuple.
+ */
+export circuit expireFunding(projectId: Bytes<32>): [] {
+  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
+  const p = projects.lookup(disclose(projectId));
+  assert(disclose(p.status == ProjectStatus.Selected), "Not selected");
+  assert(blockTimeGte(p.fundingDeadline), "Funding deadline not reached");
+  projects.insert(
+    disclose(projectId),
+    disclose(ProjectInfo { ...p, status: ProjectStatus.Cancelled })
+    );
+}

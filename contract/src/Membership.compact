@@ -1,0 +1,123 @@
+pragma language_version >= 0.23;
+
+/**
+ * @module Membership
+ * @description Government member registry and anonymous membership proofs.
+ *
+ * Members are committed identities: a member registers `commit = persistentCommit(pk(sk), salt)`
+ * as a leaf of `members` (`HistoricMerkleTree`). The admin (main contract) inserts/revokes
+ * commitments and maintains `memberCount`. Membership is proven anonymously via a Merkle path
+ * (`require_member`), hiding which member is acting; `revokedMembers` excludes removed members.
+ *
+ * The exported ledgers are owned by the main contract's state and can be read/written directly
+ * by the importing contract (e.g. `Membership_members.insert(...)` in `addMember`).
+ *
+ * @dev Witnesses (`member_sk`, `member_salt`, `member_path`) are declared here because they are
+ * only consumed by `require_member` inside this module. The main contract needs none of them.
+ */
+module Membership {
+  import CompactStandardLibrary;
+
+  /**
+   * @witness member_sk
+   * @description Returns a government member's secret key from private state.
+   * @returns {Bytes<32>} sk - The member secret key.
+   */
+  witness member_sk(): Bytes<32>;
+
+  /**
+   * @witness member_salt
+   * @description Returns a member's commitment salt, keeping the committed leaf unlinkable.
+   * @returns {Bytes<32>} salt - The commitment randomness.
+   */
+  witness member_salt(): Bytes<32>;
+
+  /**
+   * @witness member_path
+   * @description Returns the Merkle path proving `commit` is a leaf of the members tree.
+   * @param {Bytes<32>} commit - The member's committed identity.
+   * @returns {MerkleTreePath<16, Bytes<32>>} - The membership proof path.
+   */
+  witness member_path(commit: Bytes<32>): MerkleTreePath<16, Bytes<32>>;
+
+  /**
+   * @description HistoricMerkleTree of government member commitments (leaves are
+   * `persistentCommit(pk, salt)`), enabling anonymous membership proofs.
+   */
+  export ledger members: HistoricMerkleTree<16, Bytes<32>>;
+
+  /**
+   * @description Set of member commitments that have been removed by the admin.
+   */
+  export ledger revokedMembers: Set<Bytes<32>>;
+
+  /**
+   * @description Current number of active government members.
+   */
+  export ledger memberCount: Counter;
+
+  /**
+   * @description Derives an actor's public identity from their secret key:
+   * `pk = persistentHash(pad(32, "govfund:pk:"), sk)`.
+   * @param {Bytes<32>} sk - The actor's secret key (witness-derived).
+   * @return {Bytes<32>} pk - The derived public identity.
+   */
+  export circuit get_public_key(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "govfund:pk:"), sk]);
+  }
+
+  /**
+   * @description A member's committed identity: `persistentCommit(pk(sk), salt)`, hiding their
+   * public key until needed while serving as the Merkle leaf.
+   * @param {Bytes<32>} sk - The member's secret key.
+   * @return {Bytes<32>} - The commitment.
+   */
+  circuit member_commitment(sk: Bytes<32>): Bytes<32> {
+    return persistentCommit<Bytes<32>>(get_public_key(sk), member_salt());
+  }
+
+  /**
+   * @description Guard: proves the caller is an active government member via a Merkle membership
+   * proof (identity hidden) and returns their secret key.
+   * @return {Bytes<32>} sk - The member's secret key.
+   */
+  export circuit require_member(): Bytes<32> {
+    const sk = member_sk();
+    const commit = member_commitment(sk);
+    const path = member_path(commit);
+    assert(disclose(commit == path.leaf), "Not a member");
+    assert(members.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path))), "Not a member");
+    assert(!revokedMembers.member(commit), "Member revoked");
+    return sk;
+  }
+
+  /**
+   * @description Read-only view: returns the current number of active government members.
+   * @return {Uint<64>} - The member count.
+   */
+  export circuit activeMemberCount(): Uint<64> {
+    return memberCount.read();
+  }
+
+  /**
+   * @description Read-only view: returns whether `commit` has been revoked by the admin.
+   * @param {Bytes<32>} commit - The member's committed identity.
+   * @return {Boolean} - Whether the commitment is revoked.
+   */
+  export circuit isRevoked(commit: Bytes<32>): Boolean {
+    return revokedMembers.member(disclose(commit));
+  }
+
+  /**
+   * @description Read-only view: returns whether `commit` is a leaf of the members tree, given
+   * its Merkle path (computed off-chain from the tracked leaves).
+   * @param {Bytes<32>} commit - The member's committed identity.
+   * @param {MerkleTreePath<16, Bytes<32>>} path - The membership path.
+   * @return {Boolean} - Whether the commitment is a current member.
+   */
+  export circuit isMember(commit: Bytes<32>, path: MerkleTreePath<16, Bytes<32>>): Boolean {
+    const leafOk = disclose(commit == path.leaf);
+    const rootOk = members.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path)));
+    return disclose(leafOk && rootOk);
+  }
+}
