@@ -19,15 +19,15 @@ voting and stage-based vesting. A single contract instance manages many projects
 
 ## Contract features
 
-| Area | Behavior |
-| ------ | ---------- |
-| Admin | Manages members and configures `quorumPercent` / `approvalsRequired` |
-| Private voting | Merkle-tree membership + nullifiers; per-proposal counts are public |
-| Proposer privacy | Proposals committed; identity revealed only to proceed with funding |
-| Vesting | Fixed stage schedule per proposal; N reviewers must approve each stage |
-| Collateral | Deposited at proposal time; returned to losers / winner, slashed on termination |
-| Deadlines | Voting deadline (cancel if not finalized) and funding deadline (cancel if unfunded) |
-| Funds | Shielded `fundingToken` (e.g. NIGHT) pooled in the contract |
+| Area             | Behavior                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| Admin            | Manages members and configures `quorumPercent` / `approvalsRequired`                |
+| Private voting   | Merkle-tree membership + nullifiers; per-proposal counts are public                 |
+| Proposer privacy | Proposals committed; identity revealed only to proceed with funding                 |
+| Vesting          | Fixed stage schedule per proposal; N reviewers must approve each stage              |
+| Collateral       | Deposited at proposal time; returned to losers / winner, slashed on termination     |
+| Deadlines        | Voting deadline (cancel if not finalized) and funding deadline (cancel if unfunded) |
+| Funds            | Shielded `fundingToken` (e.g. NIGHT) pooled in the contract                         |
 
 ## Project layout
 
@@ -57,14 +57,26 @@ npm run typecheck  # type-check witnesses and tests
 npm run compile:zk # compile with full proving keys
 ```
 
+## Frontend (UI)
+
+The repo includes a browser frontend that demos the full contract lifecycle.
+The **UI guide** has a quick walkthrough.
+
+```bash
+npm run dev    # starts the UI at http://localhost:5173
+```
+
+See [ui/README.md](ui/README.md) for setup, the demo walkthrough, roles, and
+troubleshooting.
+
 ## Testing
 
 The suite drives the compiled contract directly through the runtime
 `CircuitContext` (no proof server or devnet needed), so it runs against the
 `--skip-zk` build.
 
-| Command | Runs | Count |
-| ------- | ---- | ----- |
-| `npm test` | full suite | 71 |
-| `npm run test:unit` | admin, membership, vesting | 70 |
-| `npm run test:e2e` | narrated end-to-end workflow (verbose) | 1 |
+| Command             | Runs                                   | Count |
+| ------------------- | -------------------------------------- | ----- |
+| `npm test`          | full suite                             | 71    |
+| `npm run test:unit` | admin, membership, vesting             | 70    |
+| `npm run test:e2e`  | narrated end-to-end workflow (verbose) | 1     |
