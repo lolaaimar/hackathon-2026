@@ -69,6 +69,7 @@ export interface Proposal {
   id: string;
   projectId: string;
   companyName: string;
+  description: string;
   budget: number;
   collateral: number;
   stages: Stage[];

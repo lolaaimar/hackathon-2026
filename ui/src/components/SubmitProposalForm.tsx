@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useGovFund } from "../mock/store";
 import { Button } from "./ui/Button";
-import { Field, Input } from "./ui/Field";
+import { Field, Input, Textarea } from "./ui/Field";
 import { XIcon, PlusIcon } from "./ui/icons";
 import { validateProposal } from "../lib/validation";
 import type { ProjectInfo } from "../types";
@@ -10,6 +10,7 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
   const { state, dispatch, toast } = useGovFund();
   const [budget, setBudget] = useState("");
   const [collateral, setCollateral] = useState(String(project.collateralRequired));
+  const [description, setDescription] = useState("");
   const [stages, setStages] = useState<{ title: string; amount: string }[]>([
     { title: "", amount: "" },
     { title: "", amount: "" },
@@ -57,6 +58,7 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
       projectId: project.id,
       input: {
         companyName: state.demoCompany,
+        description: description.trim(),
         budget: budgetN,
         collateral: collateralN,
         stages: parsedStages.map((s) => ({ title: s.title, description: "", amount: s.amount })),
@@ -94,6 +96,17 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
             value={collateral}
             onChange={(e) => setCollateral(e.target.value)}
             required
+          />
+        </Field>
+      </div>
+
+      <div className="mt-4">
+        <Field label="Proposal description" hint="Explain why your bid deserves the grant">
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe your approach, timeline, and qualifications..."
+            rows={4}
           />
         </Field>
       </div>

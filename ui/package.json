@@ -21,11 +21,13 @@
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
+    "@supabase/supabase-js": "^2.112.2",
     "events": "^3.3.0",
     "level": "^10.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.18.2",
+    "rolldown": "^1.0.0-beta.30",
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {

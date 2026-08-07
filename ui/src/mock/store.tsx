@@ -11,6 +11,10 @@ import {
 import { reducer, type Action } from "./actions";
 import { createSeedState } from "./seed";
 import type { AppState, Role } from "../types";
+import {
+  loadDescriptions,
+  saveDescriptions,
+} from "../lib/supabase";
 
 export interface Toast {
   id: number;
@@ -34,7 +38,7 @@ let toastSeq = 0;
 
 const STORAGE_KEY = "govfund.state.v1";
 
-function loadState(): AppState {
+function loadStateFromLocal(): AppState | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -68,6 +72,12 @@ function loadState(): AppState {
   } catch {
     // Corrupt or unavailable storage — fall through to the seed.
   }
+  return null;
+}
+
+function loadState(): AppState {
+  const local = loadStateFromLocal();
+  if (local) return local;
   const seed = createSeedState();
   seed.role = initialRole();
   return seed;
@@ -90,6 +100,36 @@ function initialRole(): Role | null {
 export function GovFundProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  useEffect(() => {
+    loadDescriptions()
+      .then((descs) => {
+        if (descs.length > 0) {
+          dispatch({
+            type: "MERGE_DESCRIPTIONS",
+            descriptions: descs.map((d) => ({
+              proposalId: d.proposal_id,
+              projectId: d.project_id,
+              description: d.description,
+            })),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const descs = state.projects.flatMap((p) =>
+      p.proposals.map((pr) => ({
+        proposal_id: pr.id,
+        project_id: pr.projectId,
+        description: pr.description,
+      }))
+    );
+    if (descs.length > 0) {
+      saveDescriptions(descs).catch(() => {});
+    }
+  }, [state]);
 
   useEffect(() => {
     saveState(state);

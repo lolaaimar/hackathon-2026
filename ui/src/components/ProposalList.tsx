@@ -143,6 +143,12 @@ function ProposalRow({
               </span>
             ) : null}
           </dl>
+
+          {proposal.description && revealed ? (
+            <p className="mt-3 text-[13px] leading-relaxed text-body border-t border-line pt-3">
+              {proposal.description}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
