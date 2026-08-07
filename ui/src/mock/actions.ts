@@ -21,6 +21,10 @@ export interface SubmitProposalInput {
 }
 
 export type Action =
+  | {
+      type: "MERGE_DESCRIPTIONS";
+      descriptions: Array<{ proposalId: string; projectId: string; description: string }>;
+    }
   | { type: "ROLE_SET"; role: AppState["role"] }
   | { type: "SET_DEMO_COMPANY"; company: string }
   | { type: "WALLET_CONNECTED"; walletName: string; address: string; networkId: string }
@@ -97,6 +101,23 @@ function contractAddress(): string {
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+    case "MERGE_DESCRIPTIONS": {
+      const map = new Map<string, string>();
+      for (const d of action.descriptions) {
+        map.set(d.proposalId, d.description);
+      }
+      return {
+        ...state,
+        projects: state.projects.map((p) => ({
+          ...p,
+          proposals: p.proposals.map((pr) => {
+            const remote = map.get(pr.id);
+            return remote !== undefined ? { ...pr, description: remote } : pr;
+          }),
+        })),
+      };
+    }
+
     case "ROLE_SET":
       return { ...state, role: action.role };
 
