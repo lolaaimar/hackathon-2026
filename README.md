@@ -36,16 +36,18 @@ contract/src/index.compact      main contract (config ledgers, project/vesting c
 contract/src/types.compact      shared types (included by index)
 contract/src/Membership.compact module: government member registry + anonymous membership
 contract/src/managed/           compiler output (generated, gitignored)
+contract/__tests__/             native vitest suite (simulator + witnesses + tests)
 api/src/witnesses.ts            witness factory + per-role private state
 api/src/types.ts                generated type re-exports + private-state types
 design.md                       full design document
 ```
 
-## Build
+## Build & test
 
 ```bash
 npm install
 npm run compile    # compile the Compact contract (--skip-zk)
-npm run typecheck  # type-check witnesses against generated types
+npm run typecheck  # type-check witnesses and tests
+npm test           # run the vitest suite
 npm run compile:zk # compile with full proving keys
 ```
