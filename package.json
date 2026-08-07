@@ -5,12 +5,15 @@
   "type": "module",
   "workspaces": [
     "contract",
-    "api"
+    "api",
+    "ui"
   ],
   "scripts": {
     "compile": "npm run compile --workspace contract",
     "compile:zk": "npm run compile:zk --workspace contract",
-    "test": "npm run test --workspace contract",
-    "typecheck": "npm run typecheck --workspace contract && npm run typecheck --workspace api"
+    "typecheck": "npm run typecheck --workspace api && npm run typecheck --workspace ui && npm run typecheck --workspace contract",
+    "dev": "npm run dev --workspace ui",
+    "build": "npm run build --workspace ui",
+    "test": "npm run test --workspace contract"
   }
 }

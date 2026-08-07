@@ -1,0 +1,105 @@
+@import "@fontsource-variable/inter";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --color-bg: oklch(0.94 0.006 255);
+  --color-panel: oklch(0.965 0.005 255);
+  --color-panel-strong: oklch(0.91 0.008 255);
+  --color-ink: oklch(0.21 0.008 255);
+  --color-body: oklch(0.36 0.012 255);
+  --color-muted: oklch(0.52 0.02 255);
+  --color-line: oklch(0.86 0.008 255);
+  --color-line-strong: oklch(0.78 0.01 255);
+
+  --color-primary-50: oklch(0.975 0.006 26);
+  --color-primary-100: oklch(0.94 0.02 26);
+  --color-primary-200: oklch(0.895 0.04 26);
+  --color-primary-600: oklch(0.455 0.185 26);
+  --color-primary-700: oklch(0.385 0.15 26);
+  --color-primary-800: oklch(0.315 0.12 26);
+  --color-accent: oklch(0.6 0.22 23);
+
+  --color-voting: oklch(0.62 0.16 75);
+  --color-voting-soft: oklch(0.95 0.03 75);
+  --color-selected: oklch(0.54 0.17 292);
+  --color-selected-soft: oklch(0.95 0.025 292);
+  --color-progress: oklch(0.54 0.16 255);
+  --color-progress-soft: oklch(0.95 0.025 255);
+  --color-completed: oklch(0.55 0.14 155);
+  --color-completed-soft: oklch(0.95 0.03 155);
+  --color-cancelled: oklch(0.57 0.015 255);
+  --color-cancelled-soft: oklch(0.955 0.004 255);
+  --color-terminated: oklch(0.5 0.2 18);
+  --color-terminated-soft: oklch(0.95 0.025 18);
+
+  --color-success: oklch(0.52 0.15 155);
+  --color-warning: oklch(0.62 0.16 75);
+  --color-danger: oklch(0.52 0.2 18);
+  --color-info: oklch(0.52 0.16 255);
+
+  --radius-xl2: 1rem;
+
+  --z-index-dropdown: 10;
+  --z-index-sticky: 20;
+  --z-index-backdrop: 30;
+  --z-index-modal: 40;
+  --z-index-toast: 50;
+  --z-index-tooltip: 60;
+}
+
+@layer base {
+  html {
+    @apply bg-bg text-body;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply font-sans text-[14px] leading-6;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-ink;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary-700);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+dialog::backdrop {
+  background: color-mix(in oklab, var(--color-ink) 42%, transparent);
+}
+
+dialog {
+  color: var(--color-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
