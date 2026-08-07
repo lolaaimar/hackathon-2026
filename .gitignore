@@ -150,5 +150,9 @@ vite.config.ts.timestamp-*
 .opencode/*
 .agents/*
 
-# Compact compiler output
+**/dist/
 contract/src/managed/
+midnight-level-db
+**/reports
+**/.DS_Store
+.vscode/

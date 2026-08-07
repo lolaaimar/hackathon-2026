@@ -1,32 +1,4 @@
-import type {
-  Ledger,
-  MerkleTreePath,
-  Maybe,
-  Proposal,
-  ProjectInfo,
-  ProjectStatus,
-  QualifiedShieldedCoinInfo,
-  ShieldedCoinInfo,
-  Stage,
-  Winner,
-  Witnesses,
-  ZswapCoinPublicKey,
-} from "../../contract/src/managed/govfund/contract/index.js";
-
-export type {
-  Ledger,
-  MerkleTreePath,
-  Maybe,
-  Proposal,
-  ProjectInfo,
-  ProjectStatus,
-  QualifiedShieldedCoinInfo,
-  ShieldedCoinInfo,
-  Stage,
-  Winner,
-  Witnesses,
-  ZswapCoinPublicKey,
-};
+import { ZswapCoinPublicKey } from "./managed/govfund/contract/index.js";
 
 export const MAX_STAGES = 10;
 export const MEMBER_DEPTH = 16;

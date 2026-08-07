@@ -4,15 +4,14 @@ import {
   StateBoundedMerkleTree,
 } from "@midnight-ntwrk/compact-runtime";
 import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
-import { pureCircuits } from "../../contract/src/managed/govfund/contract/index.js";
+import { pureCircuits } from "./managed/govfund/contract/index.js";
 import type {
   Ledger,
   MerkleTreePath,
   Witnesses,
   ZswapCoinPublicKey,
-} from "../../contract/src/managed/govfund/contract/index.js";
-import type { GovFundPrivateState } from "./types.js";
-import { MEMBER_DEPTH } from "./types.js";
+} from "./managed/govfund/contract/index.js";
+import { GovFundPrivateState, MEMBER_DEPTH } from "./types.js";
 
 const bytesDescriptor = new CompactTypeBytes(32);
 
@@ -68,9 +67,7 @@ export const createCompanyState = (
  * Binds every witness declared by the contract to a role's private state.
  * A role only ever invokes the circuits that use the witnesses relevant to it.
  */
-export const makeWitnesses = (
-  privateState: GovFundPrivateState,
-): Witnesses<GovFundPrivateState> => ({
+export const witnesses = {
   admin_sk: ({
     privateState: ps,
   }: WitnessContext<Ledger, GovFundPrivateState>): [
@@ -113,4 +110,4 @@ export const makeWitnesses = (
     ps,
     computeMemberPath(ps.memberLeaves!, commit),
   ],
-});
+};
