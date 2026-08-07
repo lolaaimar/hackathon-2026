@@ -331,7 +331,7 @@ The **top bar** (present on every page once logged in) contains:
 - **Exit** — logs out.
 
 The **bottom-right** has the **demo clock**. The **bottom-left** has a
-**Config** button (network picker).
+**Config** button (network picker + restart demo).
 
 ---
 
@@ -424,10 +424,14 @@ Notes:
 
 ## 11. Config panel (network)
 
-Click **Config** (bottom-left) to open the config modal. It contains the
-**Blockchain network** picker — the network the DApp Connector wallet is asked
-to connect on, and the network used for new deployments. It persists your
-choice across reloads.
+Click **Config** (bottom-left) to open the config modal. It has two parts:
+
+- **Blockchain network** — the network the DApp Connector wallet is asked to
+  connect on, and the network used for new deployments. It persists your
+  choice across reloads.
+- **Restart demo** — wipes all saved demo data and returns to the login
+  screen with the seed project restored. See
+  [§12](#12-state-persistence--resetting-the-demo).
 
 ---
 
@@ -437,10 +441,14 @@ choice across reloads.
   saved to your browser's `localStorage` under `govfund.state.v1`, so the
   demo **survives page reloads**.
 - A seed snapshot (the "Metro Line 4" project) is loaded on first visit.
-- **To start completely fresh**, clear the key:
+- **To start completely fresh** with the UI: open **Config** (bottom-left) →
+  **Restart demo** → **Confirm restart**. This removes the saved state (and
+  the saved network choice), clears the demo back to its seed snapshot, and
+  returns you to the login screen.
+- If you prefer to clear it manually, you can also remove the key from the
+  browser console:
 
 ```js
-// paste in the browser console
 localStorage.removeItem("govfund.state.v1");
 location.reload();
 ```
@@ -491,7 +499,7 @@ separators. `1,000,000 NIGHT = 1M NIGHT`.
 
 **Can I undo something?**
 The demo clock can go backwards (`-1d`), but state changes are not undoable.
-Use the localStorage reset above to start over.
+Use **Config → Restart demo** to wipe the saved state and start over.
 
 ---
 
