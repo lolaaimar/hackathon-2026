@@ -14,6 +14,7 @@ export interface CreateProjectInput {
 
 export interface SubmitProposalInput {
   companyName: string;
+  description: string;
   budget: number;
   collateral: number;
   stages: Stage[];
@@ -434,6 +435,7 @@ export function reducer(state: AppState, action: Action): AppState {
         id,
         projectId: p.id,
         companyName: action.input.companyName,
+        description: action.input.description,
         budget: action.input.budget,
         collateral: action.input.collateral,
         stages: action.input.stages,

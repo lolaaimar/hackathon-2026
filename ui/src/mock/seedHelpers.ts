@@ -22,6 +22,7 @@ export function makeProposal(p: ProposalSeed): Proposal {
     id: p.id,
     projectId: "unset",
     companyName: p.company,
+    description: "",
     budget: p.budget,
     collateral: Math.round(p.budget * 0.02),
     stages: p.stages,
