@@ -10,6 +10,7 @@
   "scripts": {
     "compile": "npm run compile --workspace contract",
     "compile:zk": "npm run compile:zk --workspace contract",
-    "typecheck": "npm run typecheck --workspace api"
+    "test": "npm run test --workspace contract",
+    "typecheck": "npm run typecheck --workspace contract && npm run typecheck --workspace api"
   }
 }

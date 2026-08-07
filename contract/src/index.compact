@@ -44,7 +44,6 @@ include "types";
 
 import "./Membership" prefix Mem_;
 
-
 export { Mem_members, Mem_revokedMembers, Mem_memberCount };
 
 export { Mem_activeMemberCount, Mem_isRevoked, Mem_isMember };
@@ -851,7 +850,9 @@ export circuit rejectStage(projectId: Bytes<32>): [] {
   stageActionNullifiers.lookup(disclose(projectId)).insert(n);
   projects.insert(
     disclose(projectId),
-    disclose(ProjectInfo { ...p, stageRejections: (p.stageRejections + 1) as Uint<16> })
+    disclose(ProjectInfo { ...p,
+                           stagePending: false,
+                           stageRejections: (p.stageRejections + 1) as Uint<16>, })
     );
 }
 
