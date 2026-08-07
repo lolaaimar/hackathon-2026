@@ -6,7 +6,9 @@
   "scripts": {
     "compile": "compact compile -- --skip-zk src/index.compact src/managed/govfund",
     "compile:zk": "compact compile -- src/index.compact src/managed/govfund",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "vitest run __tests__/workflow.test.ts --reporter=verbose",
+    "test:unit": "vitest run __tests__/admin.test.ts __tests__/membership.test.ts __tests__/vesting.test.ts"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
