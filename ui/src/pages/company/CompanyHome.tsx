@@ -33,8 +33,8 @@ export function CompanyHome() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Company portal</h1>
         <p className="mt-1 text-sm text-muted">
-          Bidding as <span className="font-semibold text-ink">{state.demoCompany}</span> — a single
-          demo identity behind hidden commitments.
+          Bidding as <span className="font-semibold text-ink">{state.demoCompany}</span> — each
+          demo identity keeps its own hidden commitment.
         </p>
       </div>
 

@@ -15,7 +15,7 @@ import type {
 } from '../types';
 
 export type ViewModelLocal = {
-  readonly memberRegistry: { commit: string; label: string }[];
+  readonly memberRegistry: { id?: string; commit: string; label: string }[];
   readonly descriptions: Record<string, string>;
   readonly projectDescriptions: Record<string, string>;
   readonly myVotes: Record<string, string>;
@@ -71,7 +71,7 @@ export function toViewModel(
     pot: safeNumber(ledger.pot.value),
     potHasCoin: ledger.potHasCoin,
     members: local.memberRegistry.map((m) => ({
-      id: m.commit,
+      id: m.id ?? m.commit,
       name: m.label,
       address: m.commit,
       commit: m.commit,

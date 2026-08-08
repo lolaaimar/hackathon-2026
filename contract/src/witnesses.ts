@@ -14,6 +14,12 @@ import type { GovFundPrivateState } from './types.js';
 export const memberCommit = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   pureCircuits.memberCommit(pureCircuits.publicKeyOf(sk), salt);
 
+/**
+ * Derives an actor's public identity from their secret key, matching the
+ * contract's `publicKeyOf` pure circuit. Used off-chain by the UI and mock.
+ */
+export const publicKeyOf = (sk: Uint8Array): Uint8Array => pureCircuits.publicKeyOf(sk);
+
 export const createAdminState = (sk: Uint8Array): GovFundPrivateState => ({ sk });
 
 export const createMemberState = (sk: Uint8Array, salt: Uint8Array): GovFundPrivateState => ({

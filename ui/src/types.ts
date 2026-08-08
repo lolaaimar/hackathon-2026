@@ -154,6 +154,7 @@ export interface AppState {
 }
 
 export const DEMO_COMPANIES = [
+  'My Company',
   'VoltGrid Industries',
   'Atlas Rail Systems',
   'Reyes Construction',

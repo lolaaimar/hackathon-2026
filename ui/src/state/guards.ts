@@ -9,9 +9,12 @@ export function isDeployed(state: AppState): boolean {
 }
 
 export function isDeployer(state: AppState): boolean {
-  if (!state.contract.deployed || !state.contract.deployerAddress) return false;
+  if (!state.contract.deployed) return false;
   if (state.wallet.connected) {
-    return state.wallet.address === state.contract.deployerAddress;
+    return (
+      state.contract.deployerAddress !== null &&
+      state.wallet.address === state.contract.deployerAddress
+    );
   }
   return state.role === 'admin';
 }

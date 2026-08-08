@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ArrowLeftIcon, BuildingIcon, LockIcon } from '../../components/ui/icons';
-import { fmtNight } from '../../lib/format';
+import { fmtNight, shortAddr } from '../../lib/format';
 import { canSubmitProposal, canWithdraw, isWinner, mineOf } from '../../state/guards';
 import { useGovFund } from '../../state/provider';
 
@@ -148,15 +148,17 @@ function MyBidStatus({
         {mine.map((pr) => {
           const isW = isWinner(project, pr);
           return (
-            <li key={pr.id} className="flex items-center justify-between text-[13px]">
-              <span className="flex items-center gap-2">
+            <li key={pr.id} className="flex items-center justify-between gap-2 text-[13px]">
+              <span className="flex min-w-0 items-center gap-2">
                 <span
-                  className={`h-2 w-2 rounded-full ${pr.withdrawn ? 'bg-cancelled' : isW ? 'bg-selected' : 'bg-progress'}`}
+                  className={`h-2 w-2 shrink-0 rounded-full ${pr.withdrawn ? 'bg-cancelled' : isW ? 'bg-selected' : 'bg-progress'}`}
                 />
-                <span className="font-medium text-ink">{pr.id}</span>
-                <span className="text-muted">{pr.voteCount} votes</span>
+                <span className="truncate font-mono text-[12px] font-medium text-ink">
+                  {shortAddr(pr.id)}
+                </span>
+                <span className="shrink-0 text-muted">{pr.voteCount} votes</span>
               </span>
-              <span className="tabular text-muted">
+              <span className="shrink-0 text-right text-muted">
                 {pr.withdrawn
                   ? 'collateral withdrawn'
                   : project.status === 'Voting'
