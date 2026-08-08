@@ -57,6 +57,20 @@ npm run typecheck  # type-check witnesses and tests
 npm run compile:zk # compile with full proving keys
 ```
 
+## Undeployed network
+
+For usage with undeployed network, initialize the services with:
+
+```bash
+docker compose up -d
+```
+
+and stop them with:
+
+```bash
+docker compose down --volumes
+```
+
 ## Frontend (UI)
 
 The repo includes a browser frontend that demos the full contract lifecycle.
