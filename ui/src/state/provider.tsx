@@ -197,7 +197,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       subRef.current?.unsubscribe();
       const sub = c.ledger$(address).subscribe({
         next: (l) => setLedger(l),
-        error: () => {},
+        error: (err) => console.error("[govfund] ledger subscription error", err),
       });
       subRef.current = sub;
       setClient(c);
@@ -210,7 +210,9 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
   // Re-seed the private state whenever the active role changes.
   useEffect(() => {
     if (api && contract.address && role) {
-      attach(contract.address, role, api).catch(() => {});
+      attach(contract.address, role, api).catch((e) =>
+        console.error("[govfund] attach/re-seed failed", e),
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, api]);
@@ -276,6 +278,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
           try {
             await attach(contract.address, role, action.api);
           } catch (e) {
+            console.error("[govfund] connect to contract failed", e);
             toast(e instanceof Error ? e.message : "Failed to connect to contract", "error");
           }
         }
@@ -337,11 +340,12 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
           });
           const sub = c.ledger$(address).subscribe({
             next: (l) => setLedger(l),
-            error: () => {},
+            error: (err) => console.error("[govfund] ledger subscription error", err),
           });
           subRef.current = sub;
           toast("Contract deployed.");
         } catch (e) {
+          console.error("[govfund] deploy failed", e);
           toast(e instanceof Error ? e.message : "Deployment failed", "error");
         }
         return;
@@ -371,6 +375,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         try {
           await runContractAction(action);
         } catch (e) {
+          console.error("[govfund] transaction failed", e);
           toast(e instanceof Error ? e.message : "Transaction failed", "error");
         }
         return;

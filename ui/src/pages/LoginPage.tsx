@@ -71,6 +71,7 @@ export function LoginPage() {
       toast(`Connected to ${w.name}.`, "success");
       enterAs("member");
     } catch (e) {
+      console.error("[govfund] wallet connect failed", e);
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       dispatch({ type: "WALLET_ERROR", error: msg });
