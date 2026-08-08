@@ -1,23 +1,15 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../../state/provider";
-import { ProjectHeader } from "../../components/ProjectHeader";
-import { ProposalList } from "../../components/ProposalList";
-import { StagePanel } from "../../components/StagePanel";
-import { Button } from "../../components/ui/Button";
-import { Card, CardHeader } from "../../components/ui/Card";
-import { Progress } from "../../components/ui/Progress";
-import { ArrowLeftIcon, VoteIcon } from "../../components/ui/icons";
-import { EmptyState } from "../../components/ui/EmptyState";
-import {
-  canCancel,
-  canExpire,
-  canFinalize,
-  canFund,
-  quorumNeeded,
-  winnerProposal,
-} from "../../state/guards";
-import { fmtNight } from "../../lib/format";
-import { timeFromNow } from "../../lib/time";
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ProjectHeader } from '../../components/ProjectHeader';
+import { ProposalList } from '../../components/ProposalList';
+import { StagePanel } from '../../components/StagePanel';
+import { Button } from '../../components/ui/Button';
+import { Card, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ArrowLeftIcon, VoteIcon } from '../../components/ui/icons';
+import { Progress } from '../../components/ui/Progress';
+import { fmtNight } from '../../lib/format';
+import { canFinalize, canFund, quorumNeeded, winnerProposal } from '../../state/guards';
+import { useGovFund } from '../../state/provider';
 
 export function MemberProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +25,7 @@ export function MemberProjectDetail() {
           title="Project not found"
           body="It may have been removed from the demo snapshot."
           action={
-            <Button variant="secondary" onClick={() => navigate("/member")}>
+            <Button variant="secondary" onClick={() => navigate('/member')}>
               Back to desk
             </Button>
           }
@@ -43,8 +35,8 @@ export function MemberProjectDetail() {
   }
 
   const vote = (proposalId: string) => {
-    dispatch({ type: "VOTE", projectId: project.id, proposalId });
-    toast("Vote cast — recorded as a fresh nullifier.", "success");
+    dispatch({ type: 'VOTE', projectId: project.id, proposalId });
+    toast('Vote cast — recorded as a fresh nullifier.', 'success');
   };
 
   const qNeeded = quorumNeeded(state);
@@ -73,7 +65,7 @@ export function MemberProjectDetail() {
           <Progress
             value={project.totalVotes}
             max={qNeeded}
-            color={quorumPct >= 100 ? "var(--color-completed)" : "var(--color-voting)"}
+            color={quorumPct >= 100 ? 'var(--color-completed)' : 'var(--color-voting)'}
             showLabel
           />
         </div>
@@ -84,13 +76,11 @@ export function MemberProjectDetail() {
           <CardHeader
             title="Proposals"
             subtitle={
-              project.status === "Voting"
+              project.status === 'Voting'
                 ? project.voted
-                  ? "You voted — nullifier prevents a second vote."
-                  : state.now < project.deadline
-                    ? "Cast one anonymous vote before the deadline."
-                    : "Voting closed."
-                : "Final bid list"
+                  ? 'You voted — nullifier prevents a second vote.'
+                  : 'Cast one anonymous vote.'
+                : 'Final bid list'
             }
           />
           {project.proposals.length === 0 ? (
@@ -100,13 +90,16 @@ export function MemberProjectDetail() {
               body="Companies submit bids with a budget and stage schedule while voting is open."
             />
           ) : (
-            <ProposalList project={project} onVote={project.status === "Voting" ? vote : undefined} />
+            <ProposalList
+              project={project}
+              onVote={project.status === 'Voting' ? vote : undefined}
+            />
           )}
         </Card>
 
         <div className="space-y-6 lg:col-span-2">
           <ActionPanel project={project} />
-          <StagePanel project={project} role="member" />
+          <StagePanel project={project} viewer="member" />
           <VestingSummary project={project} />
         </div>
       </div>
@@ -114,66 +107,50 @@ export function MemberProjectDetail() {
   );
 }
 
-function ActionPanel({ project }: { project: ReturnType<typeof useGovFund>["state"]["projects"][number] }) {
+function ActionPanel({
+  project,
+}: {
+  project: ReturnType<typeof useGovFund>['state']['projects'][number];
+}) {
   const { state, dispatch, toast } = useGovFund();
 
   const next: {
     label: string;
     run?: () => void;
-    variant?: "primary" | "secondary" | "danger";
+    variant?: 'primary' | 'secondary' | 'danger';
     disabled?: boolean;
     note?: string;
   }[] = [];
 
-  if (project.status === "Voting") {
+  if (project.status === 'Voting') {
     if (canFinalize(project, state)) {
       next.push({
-        label: "Finalize selection",
+        label: 'Finalize selection',
         run: () => {
-          dispatch({ type: "FINALIZE", projectId: project.id });
-          toast("Winner selected. Awaiting reveal + funding.", "success");
+          dispatch({ type: 'FINALIZE', projectId: project.id });
+          toast('Winner selected. Awaiting reveal + funding.', 'success');
         },
-        note: "Quorum met — pick the plurality winner.",
-      });
-    } else if (canCancel(project, state)) {
-      next.push({
-        label: "Cancel project",
-        variant: "danger",
-        run: () => {
-          dispatch({ type: "CANCEL", projectId: project.id });
-          toast("Project cancelled. Collateral is refundable.", "info");
-        },
-        note: "Deadline passed without quorum — all collateral refundable.",
+        note: 'Quorum met — pick the plurality winner.',
       });
     }
   }
 
-  if (project.status === "Selected") {
+  if (project.status === 'Selected') {
     if (!project.winnerCompany) {
       next.push({
-        label: "Waiting for reveal",
-        variant: "secondary",
+        label: 'Waiting for reveal',
+        variant: 'secondary',
         disabled: true,
-        note: "The winning company must open its identity before funding.",
+        note: 'The winning company must open its identity before funding.',
       });
-    } else if (canFund(project, state)) {
+    } else if (canFund(project)) {
       next.push({
-        label: "Fund project",
+        label: 'Fund project',
         run: () => {
-          dispatch({ type: "FUND", projectId: project.id });
-          toast("Budget deposited. Project is now in progress.", "success");
+          dispatch({ type: 'FUND', projectId: project.id });
+          toast('Budget deposited. Project is now in progress.', 'success');
         },
-        note: `Deposit the winner's budget (${project.budget > 0 ? fmtNight(project.budget) : "pending"}).`,
-      });
-    } else if (canExpire(project, state)) {
-      next.push({
-        label: "Expire funding",
-        variant: "danger",
-        run: () => {
-          dispatch({ type: "EXPIRE", projectId: project.id });
-          toast("Funding deadline missed — project cancelled.", "info");
-        },
-        note: "Funding deadline passed — cancel and refund collateral.",
+        note: `Deposit the winner's budget (${project.budget > 0 ? fmtNight(project.budget) : 'pending'}).`,
       });
     }
   }
@@ -182,14 +159,12 @@ function ActionPanel({ project }: { project: ReturnType<typeof useGovFund>["stat
     return (
       <Card>
         <p className="text-[13px] text-muted">
-          No action needed in this phase —{" "}
-          {project.status === "Completed"
-            ? "the project finished successfully."
-            : project.status === "Cancelled"
-              ? "the project was cancelled."
-              : project.status === "Terminated"
-                ? "the project was terminated."
-                : "reviews are pending."}
+          No action needed in this phase —{' '}
+          {project.status === 'Completed'
+            ? 'the project finished successfully.'
+            : project.status === 'Terminated'
+              ? 'the project was terminated.'
+              : 'reviews are pending.'}
         </p>
       </Card>
     );
@@ -197,12 +172,12 @@ function ActionPanel({ project }: { project: ReturnType<typeof useGovFund>["stat
 
   return (
     <Card>
-      <CardHeader title="Next action" subtitle={timeFromNow(next[0].disabled ? project.deadline : project.status === "Voting" ? project.deadline : project.fundingDeadline, state.now)} />
+      <CardHeader title="Next action" subtitle="What to do next in this phase" />
       {next.map((a) => (
         <div key={a.label} className="space-y-2">
           <Button
             className="w-full"
-            variant={a.variant ?? "primary"}
+            variant={a.variant ?? 'primary'}
             disabled={a.disabled}
             onClick={a.run}
           >
@@ -215,7 +190,11 @@ function ActionPanel({ project }: { project: ReturnType<typeof useGovFund>["stat
   );
 }
 
-function VestingSummary({ project }: { project: ReturnType<typeof useGovFund>["state"]["projects"][number] }) {
+function VestingSummary({
+  project,
+}: {
+  project: ReturnType<typeof useGovFund>['state']['projects'][number];
+}) {
   const winner = winnerProposal(project);
   if (!winner) return null;
   const total = winner.budget;
@@ -227,12 +206,7 @@ function VestingSummary({ project }: { project: ReturnType<typeof useGovFund>["s
         <span className="tabular font-semibold text-ink">{fmtNight(project.disbursed)}</span>
       </div>
       <div className="mt-2">
-        <Progress
-          value={project.disbursed}
-          max={total}
-          color="var(--color-completed)"
-          showLabel
-        />
+        <Progress value={project.disbursed} max={total} color="var(--color-completed)" showLabel />
       </div>
     </Card>
   );

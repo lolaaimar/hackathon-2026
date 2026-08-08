@@ -1,29 +1,25 @@
+import type { CircuitContext } from '@midnight-ntwrk/compact-runtime';
 import {
   CostModel,
   createCircuitContext,
   createConstructorContext,
   dummyContractAddress,
-} from "@midnight-ntwrk/compact-runtime";
-import type { CircuitContext } from "@midnight-ntwrk/compact-runtime";
-import {
-  Contract,
-  ledger,
-  pureCircuits,
-} from "../src/managed/govfund/contract/index.js";
+} from '@midnight-ntwrk/compact-runtime';
 import type {
   Ledger,
   ProjectStatus,
   ShieldedCoinInfo,
   Stage,
   ZswapCoinPublicKey,
-} from "../src/managed/govfund/contract/index.js";
-import { adminState, makeTestWitnesses } from "./witnesses.js";
-import type { TestPrivateState } from "./witnesses.js";
+} from '../src/managed/govfund/contract/index.js';
+import { Contract, ledger, pureCircuits } from '../src/managed/govfund/contract/index.js';
+import type { TestPrivateState } from './witnesses.js';
+import { adminState, makeTestWitnesses } from './witnesses.js';
 
 export const INITIAL_TIME = 1_700_000_000;
-export const COIN_PK = "0".repeat(64);
+export const COIN_PK = '0'.repeat(64);
 export const ZERO_TOKEN = new Uint8Array(32);
-export const MAX_STAGES = 60;
+export const MAX_STAGES = 12;
 
 export type GovFundConfig = {
   admin?: TestPrivateState;
@@ -38,7 +34,7 @@ export type GovFundConfig = {
 export const memberCommitOf = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   pureCircuits.memberCommit(pureCircuits.publicKeyOf(sk), salt);
 
-/** Builds a 60-slot stage schedule; unused slots are zero and must sum to `budget`. */
+/** Builds a 12-slot stage schedule; unused slots are zero and must sum to `budget`. */
 export const makeStages = (amounts: bigint[]): Stage[] => {
   const stages: Stage[] = amounts.map((amount) => ({ amount }));
   while (stages.length < MAX_STAGES) {
@@ -48,10 +44,7 @@ export const makeStages = (amounts: bigint[]): Stage[] => {
 };
 
 /** A shielded fundingToken coin (random nonce, so each deposit is unique). */
-export const makeCoin = (
-  value: bigint,
-  color: Uint8Array = ZERO_TOKEN,
-): ShieldedCoinInfo => ({
+export const makeCoin = (value: bigint, color: Uint8Array = ZERO_TOKEN): ShieldedCoinInfo => ({
   nonce: crypto.getRandomValues(new Uint8Array(32)),
   color,
   value,
@@ -73,6 +66,7 @@ export class GovFundSimulator {
       config.fundingToken ?? ZERO_TOKEN,
       config.treasury ?? { bytes: new Uint8Array(32).fill(0xee) },
       config.approvalsRequired ?? 2n,
+      memberCommitOf(admin.sk!, admin.salt!),
     );
     this.circuitContext = createCircuitContext(
       dummyContractAddress(),
@@ -113,38 +107,24 @@ export class GovFundSimulator {
   }
 
   get blockTime(): number {
-    return Number(
-      this.circuitContext.currentQueryContext.block.secondsSinceEpoch,
-    );
+    return Number(this.circuitContext.currentQueryContext.block.secondsSinceEpoch);
   }
 
   // ------------------------------ Admin -----------------------------------
 
   addMember(memberCommit: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.addMember(
+    this.circuitContext = this.contract.impureCircuits.manageMember(
       this.circuitContext,
       memberCommit,
+      false,
     ).context;
   }
 
   removeMember(memberCommit: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.removeMember(
+    this.circuitContext = this.contract.impureCircuits.manageMember(
       this.circuitContext,
       memberCommit,
-    ).context;
-  }
-
-  setQuorumPercent(newPercent: bigint): void {
-    this.circuitContext = this.contract.impureCircuits.setQuorumPercent(
-      this.circuitContext,
-      newPercent,
-    ).context;
-  }
-
-  setApprovalsRequired(newRequired: bigint): void {
-    this.circuitContext = this.contract.impureCircuits.setApprovalsRequired(
-      this.circuitContext,
-      newRequired,
+      true,
     ).context;
   }
 
@@ -153,8 +133,6 @@ export class GovFundSimulator {
   createProject(
     projectId: Uint8Array,
     title: string,
-    deadline: bigint,
-    fundingDeadline: bigint,
     collateralRequired: bigint,
     maxStageRejections: bigint,
   ): void {
@@ -162,8 +140,6 @@ export class GovFundSimulator {
       this.circuitContext,
       projectId,
       title,
-      deadline,
-      fundingDeadline,
       collateralRequired,
       maxStageRejections,
     ).context;
@@ -198,8 +174,8 @@ export class GovFundSimulator {
     ).context;
   }
 
-  finalizeSelection(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.finalizeSelection(
+  settleProject(projectId: Uint8Array): void {
+    this.circuitContext = this.contract.impureCircuits.settleProject(
       this.circuitContext,
       projectId,
     ).context;
@@ -211,12 +187,13 @@ export class GovFundSimulator {
     nonce: Uint8Array,
     coinPk: ZswapCoinPublicKey,
   ): void {
-    this.circuitContext = this.contract.impureCircuits.revealCompany(
+    this.circuitContext = this.contract.impureCircuits.companyClaim(
       this.circuitContext,
       projectId,
       proposalId,
       nonce,
       coinPk,
+      true,
     ).context;
   }
 
@@ -234,12 +211,13 @@ export class GovFundSimulator {
     nonce: Uint8Array,
     coinPk: ZswapCoinPublicKey,
   ): void {
-    this.circuitContext = this.contract.impureCircuits.withdrawCollateral(
+    this.circuitContext = this.contract.impureCircuits.companyClaim(
       this.circuitContext,
       projectId,
       proposalId,
       nonce,
       coinPk,
+      false,
     ).context;
   }
 
@@ -253,37 +231,25 @@ export class GovFundSimulator {
   }
 
   approveStage(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.approveStage(
+    this.circuitContext = this.contract.impureCircuits.reviewStage(
       this.circuitContext,
       projectId,
+      true,
     ).context;
   }
 
   rejectStage(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.rejectStage(
+    this.circuitContext = this.contract.impureCircuits.reviewStage(
       this.circuitContext,
       projectId,
+      false,
     ).context;
   }
 
-  // ------------------------ Termination & cancel ---------------------------
+  // ------------------------ Termination ------------------------------------
 
   voteTerminate(projectId: Uint8Array): void {
     this.circuitContext = this.contract.impureCircuits.voteTerminate(
-      this.circuitContext,
-      projectId,
-    ).context;
-  }
-
-  cancelProject(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.cancelProject(
-      this.circuitContext,
-      projectId,
-    ).context;
-  }
-
-  expireFunding(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.expireFunding(
       this.circuitContext,
       projectId,
     ).context;

@@ -29,11 +29,12 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.18.2",
-    "rxjs": "^7.8.2",
     "rolldown": "^1.0.0-beta.30",
+    "rxjs": "^7.8.2",
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@midnight-ntwrk/midnight-js-compact": "4.1.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/events": "^3",

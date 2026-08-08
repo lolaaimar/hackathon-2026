@@ -1,0 +1,114 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/tsconfig*.json",
+      "!**/*.compact",
+      "!**/*.css",
+      "!**/src/managed",
+      "!**/dist",
+      "!**/coverage"
+    ]
+  },
+
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "includes": ["**"]
+  },
+
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error"
+      },
+
+      "performance": {
+        "noBarrelFile": "error",
+        "noReExportAll": "error"
+      },
+
+      "style": {
+        "noParameterAssign": "error",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error",
+        "noUselessElse": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        }
+      },
+
+      "suspicious": {
+        "useErrorMessage": "error",
+        "noConsole": {
+          "level": "error",
+          "options": {
+            "allow": ["log"]
+          }
+        }
+      }
+    }
+  },
+
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "indentStyle": "space",
+      "lineWidth": 100
+    }
+  },
+
+  "overrides": [
+    {
+      "includes": ["ui/src/components/ui/icons.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noSvgWithoutTitle": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["ui/src/components/ProposalList.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ]
+}

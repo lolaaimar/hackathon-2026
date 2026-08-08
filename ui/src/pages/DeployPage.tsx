@@ -1,17 +1,12 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../state/provider";
-import { getSelectedNetwork, SUPPORTED_NETWORKS } from "../wallet/selectWallet";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
-import { Field, Input, Select } from "../components/ui/Field";
-import {
-  BuildingIcon,
-  CheckIcon,
-  CubeIcon,
-  UsersIcon,
-} from "../components/ui/icons";
-import { fmtDate } from "../lib/time";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Field, Input, Select } from '../components/ui/Field';
+import { BuildingIcon, CheckIcon, CubeIcon, UsersIcon } from '../components/ui/icons';
+import { fmtDate } from '../lib/time';
+import { useGovFund } from '../state/provider';
+import { getSelectedNetwork, SUPPORTED_NETWORKS } from '../wallet/selectWallet';
 
 export function DeployPage() {
   const { state, dispatch, toast } = useGovFund();
@@ -23,35 +18,33 @@ export function DeployPage() {
 
   const deployed = contract.deployed;
   const networkLabel =
-    SUPPORTED_NETWORKS.find((n) => n.id === getSelectedNetwork())?.label ??
-    getSelectedNetwork();
+    SUPPORTED_NETWORKS.find((n) => n.id === getSelectedNetwork())?.label ?? getSelectedNetwork();
 
   const deploy = async () => {
     const q = Number(quorum);
     const a = Number(approvals);
     if (!Number.isFinite(q) || q < 1 || q > 100) {
-      toast("Quorum percent must be between 1 and 100.", "error");
+      toast('Quorum percent must be between 1 and 100.', 'error');
       return;
     }
     if (!Number.isFinite(a) || a < 1 || a > 100) {
-      toast("Approvals required must be between 1 and 100.", "error");
+      toast('Approvals required must be between 1 and 100.', 'error');
       return;
     }
     await dispatch({
-      type: "CONTRACT_DEPLOY",
+      type: 'CONTRACT_DEPLOY',
       networkId: getSelectedNetwork(),
-      fundingToken: "NIGHT",
+      fundingToken: 'NIGHT',
       quorumPercent: q,
       approvalsRequired: a,
     });
-    toast(`Contract deployed to ${networkLabel}.`, "success");
-    navigate("/gov");
+    toast(`Contract deployed to ${networkLabel}.`, 'success');
+    navigate('/gov');
   };
 
-  const deployerAddress =
-    contract.deployed
-      ? (contract.deployerAddress ?? "unknown")
-      : (state.wallet.address ?? "a simulated demo address");
+  const deployerAddress = contract.deployed
+    ? (contract.deployerAddress ?? 'unknown')
+    : (state.wallet.address ?? 'a simulated demo address');
 
   if (deployed) {
     return (
@@ -78,25 +71,23 @@ export function DeployPage() {
           <dl className="mt-4 grid gap-2 text-[13px] sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-muted">Address</dt>
-              <dd className="mt-0.5 truncate font-mono text-[12px] text-body">{contract.address}</dd>
+              <dd className="mt-0.5 truncate font-mono text-[12px] text-body">
+                {contract.address}
+              </dd>
             </div>
             <div>
               <dt className="text-muted">Deployer</dt>
               <dd className="mt-0.5 truncate font-mono text-[12px] text-body">
-                {contract.deployerAddress ?? "—"}
+                {contract.deployerAddress ?? '—'}
               </dd>
             </div>
             <div>
               <dt className="text-muted">Quorum</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {config.quorumPercent}%
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{config.quorumPercent}%</dd>
             </div>
             <div>
               <dt className="text-muted">Approvals / stage</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {config.approvalsRequired}
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{config.approvalsRequired}</dd>
             </div>
           </dl>
         </div>
@@ -160,8 +151,8 @@ export function DeployPage() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">Deploy the GovFund contract</h1>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-          One contract manages many projects. Set the parameters, then deploy once — the
-          Government desk and Company portal open after.
+          One contract manages many projects. Set the parameters, then deploy once — the Government
+          desk and Company portal open after.
         </p>
       </div>
 
@@ -180,10 +171,7 @@ export function DeployPage() {
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Quorum (%)"
-              hint="Percent of members that must vote."
-            >
+            <Field label="Quorum (%)" hint="Percent of members that must vote.">
               <Input
                 type="number"
                 min={1}
@@ -195,7 +183,7 @@ export function DeployPage() {
             </Field>
             <Field
               label="Approvals / stage"
-              hint={`Reviewers that must approve each milestone stage.`}
+              hint={'Reviewers that must approve each milestone stage.'}
             >
               <Input
                 type="number"
@@ -209,9 +197,9 @@ export function DeployPage() {
           </div>
 
           <p className="rounded-lg bg-panel px-3 py-2 text-[12px] leading-5 text-muted">
-            You deploy as <span className="font-mono">{deployerAddress}</span>. This address
-            is registered as the first member (Admin) and is the only one that can add or
-            remove members after deployment.
+            You deploy as <span className="font-mono">{deployerAddress}</span>. This address is
+            registered as the first member (Admin) and is the only one that can add or remove
+            members after deployment.
           </p>
 
           <p className="rounded-lg bg-panel px-3 py-2 text-[12px] leading-5 text-muted">
@@ -219,9 +207,9 @@ export function DeployPage() {
           </p>
 
           <p className="rounded-lg bg-warning/10 px-3 py-2 text-[12px] leading-5 text-warning">
-            The registry starts with the Admin as its first member. Add more members from the
-            Admin console after deploying, and keep approvals per stage at or below the member
-            count so stages can be approved.
+            The registry starts with the Admin as its first member. Add more members from the Admin
+            console after deploying, and keep approvals per stage at or below the member count so
+            stages can be approved.
           </p>
 
           <Button type="submit" className="w-full" size="lg">

@@ -1,33 +1,20 @@
-import { Contract, type GovFundPrivateState } from '../../contract/src/index.js';
+import type { DeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
-import type {
-  DeployedContract,
-  FoundContract,
-} from '@midnight-ntwrk/midnight-js-contracts';
+import type { Contract, GovFundPrivateState } from '../../contract/src/index.js';
 
 // Provable circuit IDs produced by compactc for the main GovFund contract,
 // taken from the generated `managed/govfund/contract/index.d.ts`.
 export type GovFundCircuits =
-  | 'Mem_activeMemberCount'
-  | 'Mem_isRevoked'
-  | 'Mem_isMember'
-  | 'addMember'
-  | 'removeMember'
-  | 'setQuorumPercent'
-  | 'setApprovalsRequired'
+  | 'manageMember'
   | 'createProject'
   | 'submitProposal'
   | 'vote'
-  | 'finalizeSelection'
-  | 'revealCompany'
+  | 'settleProject'
+  | 'companyClaim'
   | 'fundProject'
-  | 'withdrawCollateral'
   | 'requestPayment'
-  | 'approveStage'
-  | 'rejectStage'
-  | 'voteTerminate'
-  | 'cancelProject'
-  | 'expireFunding';
+  | 'reviewStage'
+  | 'voteTerminate';
 
 export const GovFundPrivateStateId = 'GovFundPrivateState';
 

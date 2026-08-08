@@ -5,7 +5,6 @@ export enum ProjectStatus {
   Selected,
   InProgress,
   Completed,
-  Cancelled,
   Terminated
 }
 
@@ -34,21 +33,21 @@ export struct Proposal {
   budget: Uint<64>;
   collateral: Uint<64>;
   companyCommit: Bytes<32>;
-  stages: Vector<60, Stage>;
+  stages: Vector<12, Stage>;
   stageCount: Uint<16>;
   voteCount: Uint<16>;
 }
 
 /**
- * @description The on-chain state of a single project.
+ * @description The on-chain state of a single project. `stageCount`, `stageAmount` and
+ * `winnerCollateral` are cached from the winning `Proposal` (at settle/request time) so the
+ * vesting circuits do not need to look up the full proposal, keeping them small.
  */
 export struct ProjectInfo {
   id: Bytes<32>;
   title: Opaque<"string">;
   budget: Uint<64>;
   status: ProjectStatus;
-  deadline: Uint<64>;
-  fundingDeadline: Uint<64>;
   collateralRequired: Uint<64>;
   maxStageRejections: Uint<16>;
   totalVotes: Uint<16>;
@@ -61,6 +60,9 @@ export struct ProjectInfo {
   stageApprovals: Uint<16>;
   stageRejections: Uint<16>;
   stageAttempt: Uint<16>;
+  stageCount: Uint<16>;
+  stageAmount: Uint<64>;
+  winnerCollateral: Uint<64>;
   terminateVotes: Uint<16>;
   disbursed: Uint<64>;
 }

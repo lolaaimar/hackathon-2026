@@ -1,41 +1,32 @@
-import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
-import {
-  CompiledContract,
-} from "@midnight-ntwrk/midnight-js-protocol/compact-js";
-import {
-  deployContract,
-  findDeployedContract,
-} from "@midnight-ntwrk/midnight-js-contracts";
-import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
-import { toHex } from "@midnight-ntwrk/midnight-js-utils";
-import { GovFund, witnesses, createAdminState } from "../../contract/src/index.js";
-import type { ZswapCoinPublicKey } from "../../contract/src/index.js";
-import { GovFundPrivateStateId } from "./common-types.js";
-import type {
-  GovFundDeployedContract,
-  GovFundProviders,
-} from "./common-types.js";
-import type { GovFundPrivateState } from "./index.js";
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { ZswapCoinPublicKey } from '../../contract/src/index.js';
+import { createAdminState, GovFund, memberCommit, witnesses } from '../../contract/src/index.js';
+import type { GovFundProviders } from './common-types.js';
+import { GovFundPrivateStateId } from './common-types.js';
+import type { GovFundPrivateState } from './index.js';
 
-export * from "./index.js";
+// biome-ignore lint/performance/noBarrelFile: node entry point re-exports the public API
+// biome-ignore lint/performance/noReExportAll: node entry point re-exports the public API
+export * from './index.js';
 
 /**
  * Absolute path to the compiled GovFund assets produced by `compactc`
  * (prover/verifier keys under `keys/`, ZKIRs under `zkir/`).
  */
 export const zkConfigPath = fileURLToPath(
-  new URL("../../contract/src/managed/govfund", import.meta.url),
+  new URL('../../contract/src/managed/govfund', import.meta.url),
 );
 
 /**
  * A Compact-js binding to the compiled GovFund contract: witnesses + the
  * location of the compiled file assets.
  */
-export const govfundCompiledContract = CompiledContract.make(
-  "GovFund",
-  GovFund,
-).pipe(
+export const govfundCompiledContract = CompiledContract.make('GovFund', GovFund).pipe(
   CompiledContract.withWitnesses(witnesses),
   CompiledContract.withCompiledFileAssets(zkConfigPath),
 );
@@ -49,12 +40,12 @@ export const govfundCompiledContract = CompiledContract.make(
  */
 export const createZkConfigProvider = () => {
   const keysPath = fileURLToPath(
-    new URL("../../contract/src/managed/govfund/keys", import.meta.url),
+    new URL('../../contract/src/managed/govfund/keys', import.meta.url),
   );
   if (!existsSync(keysPath)) {
     throw new Error(
       `GovFund proving keys not found under ${keysPath}. ` +
-        "Run `npm run compile:zk` to generate them (the default `compile` script uses --skip-zk).",
+        'Run `npm run compile:zk` to generate them (the default `compile` script uses --skip-zk).',
     );
   }
   return new NodeZkConfigProvider(zkConfigPath);
@@ -77,9 +68,15 @@ export const deployGovFundContract = async (
     compiledContract: govfundCompiledContract,
     privateStateId: GovFundPrivateStateId,
     initialPrivateState: createAdminState(adminSk),
-    args: [ args.quorumPercentParam, args.fundingTokenParam, args.treasuryParam, args.approvalsRequiredParam ]
+    args: [
+      args.quorumPercentParam,
+      args.fundingTokenParam,
+      args.treasuryParam,
+      args.approvalsRequiredParam,
+      memberCommit(adminSk, new Uint8Array(32)),
+    ],
   });
-}
+};
 
 /**
  * Finds an already-deployed GovFund contract at `contractAddress`.

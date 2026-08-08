@@ -1,16 +1,10 @@
-import { Link } from "react-router-dom";
-import type { ProjectInfo } from "../types";
-import { StatusBadge } from "./StatusBadge";
-import { fmtNight } from "../lib/format";
-import { timeFromNow } from "../lib/time";
+import { Link } from 'react-router-dom';
+import { fmtNight } from '../lib/format';
+import type { ProjectInfo } from '../types';
+import { StatusBadge } from './StatusBadge';
 
-export function ProjectCard({ p, now, to }: { p: ProjectInfo; now: number; to: string }) {
-  const open = p.status === "Voting" || p.status === "Selected";
-  const deadline = open
-    ? p.status === "Voting"
-      ? p.deadline
-      : p.fundingDeadline
-    : null;
+export function ProjectCard({ p, to }: { p: ProjectInfo; to: string }) {
+  const open = p.status === 'Voting' || p.status === 'Selected';
 
   return (
     <Link
@@ -34,7 +28,7 @@ export function ProjectCard({ p, now, to }: { p: ProjectInfo; now: number; to: s
         <div>
           <dt className="text-muted">Budget</dt>
           <dd className="tabular mt-0.5 font-semibold text-ink">
-            {p.budget > 0 ? fmtNight(p.budget) : "—"}
+            {p.budget > 0 ? fmtNight(p.budget) : '—'}
           </dd>
         </div>
         <div>
@@ -42,9 +36,9 @@ export function ProjectCard({ p, now, to }: { p: ProjectInfo; now: number; to: s
           <dd className="tabular mt-0.5 font-semibold text-ink">{p.proposals.length}</dd>
         </div>
         <div>
-          <dt className="text-muted">{deadline ? "Deadline" : "Paid"}</dt>
+          <dt className="text-muted">{open ? 'Votes' : 'Paid'}</dt>
           <dd className="tabular mt-0.5 font-semibold text-ink">
-            {deadline ? timeFromNow(deadline, now) : fmtNight(p.disbursed)}
+            {open ? p.totalVotes : fmtNight(p.disbursed)}
           </dd>
         </div>
       </dl>

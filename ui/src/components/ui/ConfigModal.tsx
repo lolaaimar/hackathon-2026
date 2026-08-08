@@ -1,20 +1,14 @@
-import { useEffect, useState } from "react";
-import { Modal } from "./Modal";
-import { NetworkPicker } from "./NetworkPicker";
-import { Button } from "./Button";
-import { RefreshIcon } from "./icons";
-import { useGovFund } from "../../state/provider";
+import { useEffect, useState } from 'react';
+import { useGovFund } from '../../state/provider';
+import { Button } from './Button';
+import { RefreshIcon } from './icons';
+import { Modal } from './Modal';
+import { NetworkPicker } from './NetworkPicker';
 
-const STATE_KEY = "govfund.state.v1";
-const NETWORK_KEY = "govfund.networkId";
+const STATE_KEY = 'govfund.state.v1';
+const NETWORK_KEY = 'govfund.networkId';
 
-export function ConfigModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function ConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { reset, toast } = useGovFund();
   const [confirming, setConfirming] = useState(false);
 
@@ -31,7 +25,7 @@ export function ConfigModal({
     }
     setConfirming(false);
     reset();
-    toast("Demo restarted — saved state cleared.", "info");
+    toast('Demo restarted — saved state cleared.', 'info');
   };
 
   return (
@@ -48,8 +42,8 @@ export function ConfigModal({
       <div className="mt-6 space-y-3 border-t border-line pt-4">
         <h3 className="text-[13px] font-semibold text-ink">Restart demo</h3>
         <p className="text-[12px] leading-5 text-muted">
-          Clears all saved demo data (members, projects, votes, the clock, the deployed
-          contract) and returns to the login screen with the seed project restored.
+          Clears all saved demo data (members, projects, votes, the clock, the deployed contract)
+          and returns to the login screen with the seed project restored.
         </p>
         {confirming ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -57,11 +51,7 @@ export function ConfigModal({
               Are you sure? This can't be undone.
             </span>
             <div className="ml-auto flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setConfirming(false)}
-              >
+              <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>
                 Cancel
               </Button>
               <Button size="sm" variant="danger" onClick={restart}>
@@ -70,11 +60,7 @@ export function ConfigModal({
             </div>
           </div>
         ) : (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => setConfirming(true)}
-          >
+          <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
             <RefreshIcon size={13} /> Restart demo
           </Button>
         )}

@@ -1,4 +1,4 @@
-import { STATUS_META, type ProjectStatus } from "../types";
+import { type ProjectStatus, STATUS_META } from '../types';
 
 export function StatusBadge({ status }: { status: ProjectStatus }) {
   const meta = STATUS_META[status];

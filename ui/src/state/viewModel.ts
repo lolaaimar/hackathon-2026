@@ -2,7 +2,7 @@ import type {
   Ledger,
   Proposal as LedgerProposal,
   ProjectStatus as LedgerStatus,
-} from "@govfund/api";
+} from '@govfund/api';
 import type {
   AppState,
   Config,
@@ -12,7 +12,7 @@ import type {
   Proposal,
   Role,
   WalletInfo,
-} from "../types";
+} from '../types';
 
 export type ViewModelLocal = {
   readonly memberRegistry: { commit: string; label: string }[];
@@ -27,23 +27,16 @@ export type ViewModelLocal = {
 
 export const bytesToHex = (b: Uint8Array): string =>
   Array.from(b)
-    .map((x) => x.toString(16).padStart(2, "0"))
-    .join("");
+    .map((x) => x.toString(16).padStart(2, '0'))
+    .join('');
 
 export const hexToBytes = (hex: string): Uint8Array =>
-  new Uint8Array((hex.match(/.{2}/g) ?? []).map((h) => parseInt(h, 16)));
+  new Uint8Array((hex.match(/.{2}/g) ?? []).map((h) => Number.parseInt(h, 16)));
 
 const toStatus = (status: LedgerStatus): ProjectStatus => {
   const s = Number(status);
-  const names: ProjectStatus[] = [
-    "Voting",
-    "Selected",
-    "InProgress",
-    "Completed",
-    "Cancelled",
-    "Terminated",
-  ];
-  return names[s] ?? "Voting";
+  const names: ProjectStatus[] = ['Voting', 'Selected', 'InProgress', 'Completed', 'Terminated'];
+  return names[s] ?? 'Voting';
 };
 
 const safeNumber = (v: bigint): number => Number(v);
@@ -71,8 +64,9 @@ export function toViewModel(
     adminPk: bytesToHex(ledger.admin),
     quorumPercent: safeNumber(ledger.quorumPercent),
     approvalsRequired: safeNumber(ledger.approvalsRequired),
-    fundingToken:
-      ledger.fundingToken.every((b) => b === 0) ? "NIGHT" : bytesToHex(ledger.fundingToken),
+    fundingToken: ledger.fundingToken.every((b) => b === 0)
+      ? 'NIGHT'
+      : bytesToHex(ledger.fundingToken),
     treasury: bytesToHex(ledger.treasury.bytes),
     pot: safeNumber(ledger.pot.value),
     potHasCoin: ledger.potHasCoin,
@@ -90,45 +84,39 @@ export function toViewModel(
   for (const [id, p] of ledger.projects) {
     const projectId = bytesToHex(id);
     const winnerId = p.winner.is_some ? bytesToHex(p.winner.value) : null;
-    const projectProposals: Proposal[] = (proposalsByProject.get(projectId) ?? []).map(
-      (pr) => {
-        const proposalId = bytesToHex(pr.id);
-        const isMine = local.myCompanyCommit !== null &&
-          local.myCompanyCommit === bytesToHex(pr.companyCommit);
-        const stageCount = Math.min(
-          Number(pr.stageCount),
-          pr.stages.filter((s) => s.amount !== 0n).length || Number(pr.stageCount),
-        );
-        return {
-          id: proposalId,
-          projectId,
-          companyName: isMine
-            ? local.demoCompany
-            : `Bidder ${proposalId.slice(0, 6)}`,
-          description: local.descriptions[proposalId] ?? "",
-          budget: safeNumber(pr.budget),
-          collateral: safeNumber(pr.collateral),
-          stages: pr.stages.slice(0, stageCount).map((s, i) => ({
-            title: `Stage ${i + 1}`,
-            description: "",
-            amount: safeNumber(s.amount),
-          })),
-          voteCount: safeNumber(pr.voteCount),
-          revealed: winnerId === proposalId && p.winnerCompany.is_some,
-          withdrawn: pr.collateral === 0n,
-        };
-      },
-    );
+    const projectProposals: Proposal[] = (proposalsByProject.get(projectId) ?? []).map((pr) => {
+      const proposalId = bytesToHex(pr.id);
+      const isMine =
+        local.myCompanyCommit !== null && local.myCompanyCommit === bytesToHex(pr.companyCommit);
+      const stageCount = Math.min(
+        Number(pr.stageCount),
+        pr.stages.filter((s) => s.amount !== 0n).length || Number(pr.stageCount),
+      );
+      return {
+        id: proposalId,
+        projectId,
+        companyName: isMine ? local.demoCompany : `Bidder ${proposalId.slice(0, 6)}`,
+        description: local.descriptions[proposalId] ?? '',
+        budget: safeNumber(pr.budget),
+        collateral: safeNumber(pr.collateral),
+        stages: pr.stages.slice(0, stageCount).map((s, i) => ({
+          title: `Stage ${i + 1}`,
+          description: '',
+          amount: safeNumber(s.amount),
+        })),
+        voteCount: safeNumber(pr.voteCount),
+        revealed: winnerId === proposalId && p.winnerCompany.is_some,
+        withdrawn: pr.collateral === 0n,
+      };
+    });
 
     const now = Math.floor(Date.now() / 1000);
     projects.push({
       id: projectId,
       title: p.title,
-      description: local.projectDescriptions[projectId] ?? "",
+      description: local.projectDescriptions[projectId] ?? '',
       budget: safeNumber(p.budget),
       status: toStatus(p.status),
-      deadline: safeNumber(p.deadline),
-      fundingDeadline: safeNumber(p.fundingDeadline),
       collateralRequired: safeNumber(p.collateralRequired),
       maxStageRejections: safeNumber(p.maxStageRejections),
       totalVotes: safeNumber(p.totalVotes),
@@ -136,7 +124,7 @@ export function toViewModel(
       leaderCount: safeNumber(p.leaderCount),
       winnerProposalId: winnerId,
       winnerCompany: p.winnerCompany.is_some
-        ? { proposalId: winnerId ?? "", companyName: "Winner", revealedAt: now }
+        ? { proposalId: winnerId ?? '', companyName: 'Winner', revealedAt: now }
         : null,
       currentStage: safeNumber(p.currentStage),
       stagePending: p.stagePending,
@@ -150,7 +138,7 @@ export function toViewModel(
       voted: local.myVotes[projectId] ?? null,
       reviewedAttempt: local.myReviewedAttempt[projectId] ?? null,
       terminateVoted: local.myTerminateVotes[projectId] ?? false,
-      createdBy: "",
+      createdBy: '',
     });
   }
 

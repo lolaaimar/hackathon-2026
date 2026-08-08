@@ -1,17 +1,17 @@
-import { Link, Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { useGovFund } from "./state/provider";
-import { AppShell } from "./components/AppShell";
-import { Button } from "./components/ui/Button";
-import { EmptyState } from "./components/ui/EmptyState";
-import { CubeIcon } from "./components/ui/icons";
-import { LoginPage } from "./pages/LoginPage";
-import { DeployPage } from "./pages/DeployPage";
-import { AdminHome } from "./pages/admin/AdminHome";
-import { MemberHome } from "./pages/member/MemberHome";
-import { MemberProjectDetail } from "./pages/member/MemberProjectDetail";
-import { CompanyHome } from "./pages/company/CompanyHome";
-import { CompanyProjectDetail } from "./pages/company/CompanyProjectDetail";
-import { ContractPage } from "./pages/ContractPage";
+import { Link, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/AppShell';
+import { Button } from './components/ui/Button';
+import { EmptyState } from './components/ui/EmptyState';
+import { CubeIcon } from './components/ui/icons';
+import { AdminHome } from './pages/admin/AdminHome';
+import { ContractPage } from './pages/ContractPage';
+import { CompanyHome } from './pages/company/CompanyHome';
+import { CompanyProjectDetail } from './pages/company/CompanyProjectDetail';
+import { DeployPage } from './pages/DeployPage';
+import { LoginPage } from './pages/LoginPage';
+import { MemberHome } from './pages/member/MemberHome';
+import { MemberProjectDetail } from './pages/member/MemberProjectDetail';
+import { useGovFund } from './state/provider';
 
 export function App() {
   return (
@@ -43,7 +43,7 @@ function RequireAuth() {
 
 function GovIndex() {
   const { state } = useGovFund();
-  return <Navigate to={state.role === "admin" ? "/admin" : "/member"} replace />;
+  return <Navigate to={state.role === 'admin' ? '/admin' : '/member'} replace />;
 }
 
 function RequireDeployed() {

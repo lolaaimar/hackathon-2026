@@ -1,33 +1,31 @@
-import { useState } from "react";
-import { useGovFund } from "../../state/provider";
-import { ProjectCard } from "../../components/ProjectCard";
-import { CreateProjectForm } from "../../components/CreateProjectForm";
-import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { Stat } from "../../components/ui/Card";
-import { PlusIcon, UsersIcon } from "../../components/ui/icons";
-import { quorumNeeded } from "../../state/guards";
-import type { ProjectStatus } from "../../types";
+import { useState } from 'react';
+import { CreateProjectForm } from '../../components/CreateProjectForm';
+import { ProjectCard } from '../../components/ProjectCard';
+import { Button } from '../../components/ui/Button';
+import { Stat } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PlusIcon, UsersIcon } from '../../components/ui/icons';
+import { quorumNeeded } from '../../state/guards';
+import { useGovFund } from '../../state/provider';
+import type { ProjectStatus } from '../../types';
 
-const FILTERS: ("All" | ProjectStatus)[] = [
-  "All",
-  "Voting",
-  "Selected",
-  "InProgress",
-  "Completed",
-  "Terminated",
+const FILTERS: ('All' | ProjectStatus)[] = [
+  'All',
+  'Voting',
+  'Selected',
+  'InProgress',
+  'Completed',
+  'Terminated',
 ];
 
 export function MemberHome() {
   const { state } = useGovFund();
   const [showCreate, setShowCreate] = useState(false);
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
 
-  const projects = state.projects.filter(
-    (p) => filter === "All" || p.status === filter
-  );
+  const projects = state.projects.filter((p) => filter === 'All' || p.status === filter);
   const active = state.projects.filter(
-    (p) => p.status === "Voting" || p.status === "Selected" || p.status === "InProgress"
+    (p) => p.status === 'Voting' || p.status === 'Selected' || p.status === 'InProgress',
   );
 
   return (
@@ -46,7 +44,11 @@ export function MemberHome() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Stat label="Active projects" value={active.length} />
-        <Stat label="Quorum" value={`${state.config.quorumPercent}%`} hint={`${quorumNeeded(state)} of ${state.config.members.length} members`} />
+        <Stat
+          label="Quorum"
+          value={`${state.config.quorumPercent}%`}
+          hint={`${quorumNeeded(state)} of ${state.config.members.length} members`}
+        />
         <Stat label="Approvals / stage" value={state.config.approvalsRequired} />
       </div>
 
@@ -56,15 +58,18 @@ export function MemberHome() {
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-center gap-1" role="tablist" aria-label="Filter projects">
+      <div
+        className="mt-6 flex flex-wrap items-center gap-1"
+        role="tablist"
+        aria-label="Filter projects"
+      >
         {FILTERS.map((f) => (
           <button
             key={f}
+            type="button"
             onClick={() => setFilter(f)}
             className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
-              filter === f
-                ? "bg-ink text-white"
-                : "bg-panel text-body hover:bg-panel-strong"
+              filter === f ? 'bg-ink text-white' : 'bg-panel text-body hover:bg-panel-strong'
             }`}
           >
             {f}
@@ -83,7 +88,7 @@ export function MemberHome() {
       ) : (
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {projects.map((p) => (
-            <ProjectCard key={p.id} p={p} now={state.now} to={`/member/projects/${p.id}`} />
+            <ProjectCard key={p.id} p={p} to={`/member/projects/${p.id}`} />
           ))}
         </div>
       )}

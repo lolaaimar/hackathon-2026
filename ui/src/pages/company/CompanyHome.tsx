@@ -1,38 +1,31 @@
-import { useNavigate } from "react-router-dom";
-import { useGovFund } from "../../state/provider";
-import { ProjectCard } from "../../components/ProjectCard";
-import { Button } from "../../components/ui/Button";
-import { Card, CardHeader } from "../../components/ui/Card";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { BuildingIcon, CheckIcon } from "../../components/ui/icons";
-import { canWithdraw, isWinner, mineOf } from "../../state/guards";
-import { fmtNight } from "../../lib/format";
-import { timeFromNow } from "../../lib/time";
-import { DEMO_COMPANIES } from "../../types";
+import { useNavigate } from 'react-router-dom';
+import { ProjectCard } from '../../components/ProjectCard';
+import { Button } from '../../components/ui/Button';
+import { Card, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { BuildingIcon, CheckIcon } from '../../components/ui/icons';
+import { fmtNight } from '../../lib/format';
+import { canWithdraw, isWinner, mineOf } from '../../state/guards';
+import { useGovFund } from '../../state/provider';
+import { DEMO_COMPANIES } from '../../types';
 
 export function CompanyHome() {
   const { state, dispatch, toast } = useGovFund();
   const navigate = useNavigate();
 
   const myProposals = state.projects.flatMap((p) =>
-    p.proposals
-      .filter((pr) => mineOf(state, pr))
-      .map((pr) => ({ project: p, proposal: pr }))
+    p.proposals.filter((pr) => mineOf(state, pr)).map((pr) => ({ project: p, proposal: pr })),
   );
   const myWinner = myProposals.find(({ project, proposal }) => isWinner(project, proposal));
-  const openForBids = state.projects.filter(
-    (p) => p.status === "Voting" && state.now < p.deadline
-  );
+  const openForBids = state.projects.filter((p) => p.status === 'Voting');
   const revealPendingProject =
-    myWinner &&
-    !myWinner.project.winnerCompany &&
-    !myWinner.proposal.revealed
+    myWinner && !myWinner.project.winnerCompany && !myWinner.proposal.revealed
       ? myWinner.project
       : null;
 
   const withdraw = (projectId: string, proposalId: string, amount: number) => {
-    dispatch({ type: "WITHDRAW_COLLATERAL", projectId, proposalId });
-    toast(`Collateral of ${fmtNight(amount)} returned to your wallet.`, "success");
+    dispatch({ type: 'WITHDRAW_COLLATERAL', projectId, proposalId });
+    toast(`Collateral of ${fmtNight(amount)} returned to your wallet.`, 'success');
   };
 
   return (
@@ -82,30 +75,28 @@ export function CompanyHome() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{project.title}</p>
                     <p className="text-[12px] text-muted">
-                      <span className="font-mono">{proposal.id}</span> ·{" "}
-                      {fmtNight(proposal.budget)} ·{" "}
+                      <span className="font-mono">{proposal.id}</span> · {fmtNight(proposal.budget)}{' '}
+                      ·{' '}
                       {isWinner(project, proposal)
-                        ? "winner"
-                        : project.status === "Voting"
+                        ? 'winner'
+                        : project.status === 'Voting'
                           ? `${proposal.voteCount} votes`
-                          : "not selected"}
+                          : 'not selected'}
                     </p>
                   </div>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       proposal.revealed || (isWinner(project, proposal) && project.winnerCompany)
-                        ? "bg-selected-soft text-selected"
-                        : project.status === "Cancelled"
-                          ? "bg-cancelled-soft text-cancelled"
-                          : "bg-panel text-muted"
+                        ? 'bg-selected-soft text-selected'
+                        : 'bg-panel text-muted'
                     }`}
                   >
                     {proposal.withdrawn
-                      ? "Withdrawn"
+                      ? 'Withdrawn'
                       : proposal.revealed || (isWinner(project, proposal) && project.winnerCompany)
-                        ? "Revealed"
+                        ? 'Revealed'
                         : isWinner(project, proposal)
-                          ? "Winner"
+                          ? 'Winner'
                           : project.status}
                   </span>
                   {canWithdraw(project, proposal) ? (
@@ -126,7 +117,7 @@ export function CompanyHome() {
         <Card>
           <CardHeader
             title="Open for bids"
-            subtitle="Voting is live — submit before the deadline"
+            subtitle="Voting is live — bids close when the winner is settled"
           />
           {openForBids.length === 0 ? (
             <EmptyState
@@ -137,16 +128,12 @@ export function CompanyHome() {
           ) : (
             <div className="space-y-3">
               {openForBids.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-line bg-white p-4"
-                >
+                <div key={p.id} className="rounded-xl border border-line bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-ink">{p.title}</p>
                       <p className="text-[12px] text-muted">
-                        closes {timeFromNow(p.deadline, state.now)} · collateral{" "}
-                        {fmtNight(p.collateralRequired)}
+                        collateral {fmtNight(p.collateralRequired)}
                       </p>
                     </div>
                     <Button size="sm" onClick={() => navigate(`/company/projects/${p.id}`)}>
@@ -164,7 +151,7 @@ export function CompanyHome() {
         <h2 className="mb-3 text-lg font-bold tracking-tight text-ink">All projects</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {state.projects.map((p) => (
-            <ProjectCard key={p.id} p={p} now={state.now} to={`/company/projects/${p.id}`} />
+            <ProjectCard key={p.id} p={p} to={`/company/projects/${p.id}`} />
           ))}
         </div>
       </div>
@@ -188,13 +175,13 @@ function CompanyIdentitySwitcher() {
               key={company}
               type="button"
               onClick={() => {
-                dispatch({ type: "SET_DEMO_COMPANY", company });
-                toast(`Now bidding as ${company}`, "success");
+                dispatch({ type: 'SET_DEMO_COMPANY', company });
+                toast(`Now bidding as ${company}`, 'success');
               }}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 active
-                  ? "border-selected bg-selected text-white"
-                  : "border-line bg-white text-muted hover:border-selected/60 hover:text-ink"
+                  ? 'border-selected bg-selected text-white'
+                  : 'border-line bg-white text-muted hover:border-selected/60 hover:text-ink'
               }`}
             >
               {active ? <CheckIcon size={13} /> : <BuildingIcon size={13} />}

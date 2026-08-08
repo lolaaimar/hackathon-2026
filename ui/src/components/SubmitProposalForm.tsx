@@ -1,19 +1,25 @@
-import { useState } from "react";
-import { useGovFund } from "../state/provider";
-import { Button } from "./ui/Button";
-import { Field, Input, Textarea } from "./ui/Field";
-import { XIcon, PlusIcon } from "./ui/icons";
-import { validateProposal } from "../lib/validation";
-import type { ProjectInfo } from "../types";
+import { useState } from 'react';
+import { validateProposal } from '../lib/validation';
+import { useGovFund } from '../state/provider';
+import type { ProjectInfo } from '../types';
+import { Button } from './ui/Button';
+import { Field, Input, Textarea } from './ui/Field';
+import { PlusIcon, XIcon } from './ui/icons';
 
-export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; onDone?: () => void }) {
+export function SubmitProposalForm({
+  project,
+  onDone,
+}: {
+  project: ProjectInfo;
+  onDone?: () => void;
+}) {
   const { state, dispatch, toast } = useGovFund();
-  const [budget, setBudget] = useState("");
+  const [budget, setBudget] = useState('');
   const [collateral, setCollateral] = useState(String(project.collateralRequired));
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState('');
   const [stages, setStages] = useState<{ title: string; amount: string }[]>([
-    { title: "", amount: "" },
-    { title: "", amount: "" },
+    { title: '', amount: '' },
+    { title: '', amount: '' },
   ]);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +27,7 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
     setStages((s) => s.map((st, idx) => (idx === i ? { ...st, ...patch } : st)));
   };
 
-  const addStage = () => setStages((s) => [...s, { title: "", amount: "" }]);
+  const addStage = () => setStages((s) => [...s, { title: '', amount: '' }]);
   const removeStage = (i: number) => setStages((s) => s.filter((_, idx) => idx !== i));
 
   const parsed = () => {
@@ -33,16 +39,19 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
     }));
     const errorMsg = validateProposal(
       budgetN,
-      parsedStages.map((s) => ({ title: s.title, description: "", amount: s.amount })),
+      parsedStages.map((s) => ({ title: s.title, description: '', amount: s.amount })),
       collateralN,
-      project.collateralRequired
+      project.collateralRequired,
     );
     return { budgetN, collateralN, parsedStages, errorMsg };
   };
 
   const remaining = (() => {
     const { budgetN, parsedStages } = parsed();
-    const sum = parsedStages.reduce((acc, s) => acc + (Number.isFinite(s.amount) ? s.amount : 0), 0);
+    const sum = parsedStages.reduce(
+      (acc, s) => acc + (Number.isFinite(s.amount) ? s.amount : 0),
+      0,
+    );
     return Number.isFinite(budgetN) ? budgetN - sum : null;
   })();
 
@@ -54,17 +63,17 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
       return;
     }
     dispatch({
-      type: "SUBMIT_PROPOSAL",
+      type: 'SUBMIT_PROPOSAL',
       projectId: project.id,
       input: {
         companyName: state.demoCompany,
         description: description.trim(),
         budget: budgetN,
         collateral: collateralN,
-        stages: parsedStages.map((s) => ({ title: s.title, description: "", amount: s.amount })),
+        stages: parsedStages.map((s) => ({ title: s.title, description: '', amount: s.amount })),
       },
     });
-    toast("Proposal submitted — identity hidden behind a commitment.", "success");
+    toast('Proposal submitted — identity hidden behind a commitment.', 'success');
     onDone?.();
   };
 
@@ -86,10 +95,7 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
             required
           />
         </Field>
-        <Field
-          label="Collateral (NIGHT)"
-          hint={`Required: ${project.collateralRequired} NIGHT`}
-        >
+        <Field label="Collateral (NIGHT)" hint={`Required: ${project.collateralRequired} NIGHT`}>
           <Input
             type="number"
             min={0}
@@ -120,6 +126,7 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
         </div>
         <div className="space-y-2">
           {stages.map((s, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: editable stage rows keyed by position
             <div key={i} className="flex items-center gap-2">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-panel text-[12px] font-semibold text-muted">
                 {i + 1}
@@ -153,15 +160,19 @@ export function SubmitProposalForm({ project, onDone }: { project: ProjectInfo; 
           ))}
         </div>
         <p className="mt-2 text-[12px] text-muted">
-          Stage sum:{" "}
-          <span className={`tabular font-medium ${remaining === 0 ? "text-success" : remaining !== null && remaining !== 0 ? "text-warning" : ""}`}>
-            {remaining === null ? "—" : `${remaining} remaining`}
+          Stage sum:{' '}
+          <span
+            className={`tabular font-medium ${remaining === 0 ? 'text-success' : remaining !== null && remaining !== 0 ? 'text-warning' : ''}`}
+          >
+            {remaining === null ? '—' : `${remaining} remaining`}
           </span>
         </p>
       </div>
 
       {error ? (
-        <p className="mt-3 rounded-lg bg-terminated-soft px-3 py-2 text-[12px] text-danger">{error}</p>
+        <p className="mt-3 rounded-lg bg-terminated-soft px-3 py-2 text-[12px] text-danger">
+          {error}
+        </p>
       ) : null}
 
       <div className="mt-4 flex justify-end gap-2">

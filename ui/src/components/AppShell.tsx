@@ -1,11 +1,11 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { useGovFund } from "../state/provider";
-import { Button } from "./ui/Button";
-import { ConfigModal } from "./ui/ConfigModal";
-import { ToastStack } from "./ui/ToastStack";
-import { CubeIcon, LogOutIcon, SettingsIcon, ShieldIcon, WalletIcon } from "./ui/icons";
-import { shortAddr } from "../lib/format";
+import { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { shortAddr } from '../lib/format';
+import { useGovFund } from '../state/provider';
+import { Button } from './ui/Button';
+import { ConfigModal } from './ui/ConfigModal';
+import { CubeIcon, LogOutIcon, SettingsIcon, ShieldIcon, WalletIcon } from './ui/icons';
+import { ToastStack } from './ui/ToastStack';
 
 export function AppShell() {
   const { state, setRole } = useGovFund();
@@ -14,7 +14,7 @@ export function AppShell() {
 
   const handleLogout = () => {
     setRole(null);
-    navigate("/login");
+    navigate('/login');
   };
 
   return (
@@ -34,8 +34,8 @@ export function AppShell() {
               className={({ isActive }) =>
                 `flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium transition-colors ${
                   isActive
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-muted hover:bg-panel hover:text-ink"
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-muted hover:bg-panel hover:text-ink'
                 }`
               }
             >
@@ -60,6 +60,7 @@ export function AppShell() {
       </main>
 
       <button
+        type="button"
         onClick={() => setShowConfig(true)}
         className="fixed bottom-4 left-4 z-toast flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-3 text-[12px] font-medium text-body shadow-lg shadow-ink/10 backdrop-blur transition-colors hover:border-primary-600 hover:text-ink"
         title="Config"
@@ -78,16 +79,15 @@ function RoleSwitcher() {
   const { state, setRole } = useGovFund();
   const navigate = useNavigate();
 
-  const zones: { key: "admin" | "member" | "company"; label: string; to: string }[] = [
-    { key: "admin", label: "Admin", to: "/admin" },
-    { key: "member", label: "Member", to: "/member" },
-    { key: "company", label: "Company", to: "/company" },
+  const zones: { key: 'admin' | 'member' | 'company'; label: string; to: string }[] = [
+    { key: 'admin', label: 'Admin', to: '/admin' },
+    { key: 'member', label: 'Member', to: '/member' },
+    { key: 'company', label: 'Company', to: '/company' },
   ];
 
   return (
-    <div
-      className="flex items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5"
-      role="group"
+    <fieldset
+      className="flex min-w-0 items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5"
       aria-label="Demo user"
     >
       {zones.map((z) => {
@@ -101,16 +101,14 @@ function RoleSwitcher() {
               navigate(z.to);
             }}
             className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
-              active
-                ? "bg-primary-600 text-white"
-                : "text-muted hover:bg-bg hover:text-ink"
+              active ? 'bg-primary-600 text-white' : 'text-muted hover:bg-bg hover:text-ink'
             }`}
           >
             {z.label}
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }
 
@@ -120,16 +118,24 @@ function WalletChip() {
     return (
       <div className="flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5">
         <WalletIcon size={14} className="text-success" />
-        <span className="text-[12px] font-medium text-body">
-          {shortAddr(state.wallet.address)}
-        </span>
+        <span className="text-[12px] font-medium text-body">{shortAddr(state.wallet.address)}</span>
         <button
-          onClick={() => dispatch({ type: "WALLET_DISCONNECTED" })}
+          type="button"
+          onClick={() => dispatch({ type: 'WALLET_DISCONNECTED' })}
           className="text-muted transition-colors hover:text-ink"
           title="Disconnect wallet"
           aria-label="Disconnect wallet"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>

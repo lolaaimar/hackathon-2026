@@ -1,11 +1,11 @@
-import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
-import { pureCircuits } from "./managed/govfund/contract/index.js";
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import type {
   Ledger,
   MerkleTreePath,
   ZswapCoinPublicKey,
-} from "./managed/govfund/contract/index.js";
-import { GovFundPrivateState } from "./types.js";
+} from './managed/govfund/contract/index.js';
+import { pureCircuits } from './managed/govfund/contract/index.js';
+import type { GovFundPrivateState } from './types.js';
 
 /**
  * Computes a member's committed identity: commit(pk(sk), salt).
@@ -14,12 +14,15 @@ import { GovFundPrivateState } from "./types.js";
 export const memberCommit = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   pureCircuits.memberCommit(pureCircuits.publicKeyOf(sk), salt);
 
-export const createAdminState = (sk: Uint8Array): GovFundPrivateState => ({ sk });
+export const createAdminState = (sk: Uint8Array): GovFundPrivateState => ({
+  sk,
+  salt: new Uint8Array(32),
+});
 
-export const createMemberState = (
-  sk: Uint8Array,
-  salt: Uint8Array,
-): GovFundPrivateState => ({ sk, salt });
+export const createMemberState = (sk: Uint8Array, salt: Uint8Array): GovFundPrivateState => ({
+  sk,
+  salt,
+});
 
 export const createCompanyState = (
   sk: Uint8Array,
@@ -34,38 +37,45 @@ export const createCompanyState = (
 export const witnesses = {
   admin_sk: ({
     privateState: ps,
-  }: WitnessContext<Ledger, GovFundPrivateState>): [
-    GovFundPrivateState,
-    Uint8Array,
-  ] => [ps, ps.sk!],
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    ps.sk!,
+  ],
 
   member_sk: ({
     privateState: ps,
-  }: WitnessContext<Ledger, GovFundPrivateState>): [
-    GovFundPrivateState,
-    Uint8Array,
-  ] => [ps, ps.sk!],
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    ps.sk!,
+  ],
+
+  member_pk: ({
+    privateState: ps,
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    pureCircuits.publicKeyOf(ps.sk!),
+  ],
 
   member_salt: ({
     privateState: ps,
-  }: WitnessContext<Ledger, GovFundPrivateState>): [
-    GovFundPrivateState,
-    Uint8Array,
-  ] => [ps, ps.salt!],
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    ps.salt!,
+  ],
 
   company_sk: ({
     privateState: ps,
-  }: WitnessContext<Ledger, GovFundPrivateState>): [
-    GovFundPrivateState,
-    Uint8Array,
-  ] => [ps, ps.sk!],
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    ps.sk!,
+  ],
 
   company_nonce: ({
     privateState: ps,
-  }: WitnessContext<Ledger, GovFundPrivateState>): [
-    GovFundPrivateState,
-    Uint8Array,
-  ] => [ps, ps.nonce!],
+  }: WitnessContext<Ledger, GovFundPrivateState>): [GovFundPrivateState, Uint8Array] => [
+    ps,
+    ps.nonce!,
+  ],
 
   member_path: (
     { privateState: ps, ledger: l }: WitnessContext<Ledger, GovFundPrivateState>,
@@ -73,7 +83,7 @@ export const witnesses = {
   ): [GovFundPrivateState, MerkleTreePath<Uint8Array>] => {
     const path = l.Mem_members.findPathForLeaf(commit);
     if (path === undefined) {
-      throw new Error("Member leaf not found in the membership tree");
+      throw new Error('Member leaf not found in the membership tree');
     }
     return [ps, path];
   },

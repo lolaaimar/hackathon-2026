@@ -1,29 +1,35 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
 import type {
   GovFundDeployedContract,
   Ledger,
   ShieldedCoinInfo,
 } from "@govfund/api";
-import type { AppState, Role, WalletInfo, ContractInfo } from "../types";
-import { GovFundClient } from "../midnight/client";
-import { createGovFundProviders } from "../midnight/providers";
+import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
 import {
-  getRoleIdentity,
-  memberCommitOf,
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { GovFundClient } from "../midnight/client";
+import {
   companyCommitOf,
+  getRoleIdentity,
+  memberCommit,
+  memberCommitOf,
   type RoleIdentity,
 } from "../midnight/identities";
-import { toViewModel, bytesToHex, hexToBytes, type ViewModelLocal } from "./viewModel";
+import { createGovFundProviders } from "../midnight/providers";
+import type { AppState, ContractInfo, Role, WalletInfo } from "../types";
 import type { Action } from "./actions";
+import {
+  bytesToHex,
+  hexToBytes,
+  toViewModel,
+  type ViewModelLocal,
+} from "./viewModel";
 
 export interface Toast {
   id: number;
@@ -51,6 +57,7 @@ type Persisted = {
   role?: Role;
   address?: string;
   networkId?: string;
+  deployerAddress?: string;
   demoCompany?: string;
   memberRegistry?: { commit: string; label: string }[];
   descriptions?: Record<string, string>;
@@ -95,8 +102,20 @@ const EMPTY_STATE: AppState = {
   projects: [],
   now: Math.floor(Date.now() / 1000),
   role: null,
-  wallet: { connected: false, walletName: null, address: null, networkId: null, error: null },
-  contract: { deployed: false, address: null, networkId: null, deployedAt: null, deployerAddress: null },
+  wallet: {
+    connected: false,
+    walletName: null,
+    address: null,
+    networkId: null,
+    error: null,
+  },
+  contract: {
+    deployed: false,
+    address: null,
+    networkId: null,
+    deployedAt: null,
+    deployerAddress: null,
+  },
   demoCompany: "My Company",
 };
 
@@ -111,10 +130,14 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
 
   const [api, setApi] = useState<ConnectedAPI | null>(null);
   const [client, setClient] = useState<GovFundClient | null>(null);
-  const [deployed, setDeployed] = useState<GovFundDeployedContract | null>(null);
+  const [deployed, setDeployed] = useState<GovFundDeployedContract | null>(
+    null,
+  );
   const [ledger, setLedger] = useState<Ledger | null>(null);
 
-  const [role, setRoleState] = useState<Role | null>(persisted.role ?? initialRole());
+  const [role, setRoleState] = useState<Role | null>(
+    persisted.role ?? initialRole(),
+  );
   const [wallet, setWallet] = useState<WalletInfo>({
     connected: false,
     walletName: null,
@@ -127,11 +150,17 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
     address: persisted.address ?? null,
     networkId: persisted.networkId ?? null,
     deployedAt: null,
-    deployerAddress: null,
+    deployerAddress: persisted.deployerAddress ?? null,
   });
-  const [demoCompany, setDemoCompany] = useState(persisted.demoCompany ?? "My Company");
-  const [memberRegistry, setMemberRegistry] = useState(persisted.memberRegistry ?? []);
-  const [descriptions, setDescriptions] = useState(persisted.descriptions ?? {});
+  const [demoCompany, setDemoCompany] = useState(
+    persisted.demoCompany ?? "My Company",
+  );
+  const [memberRegistry, setMemberRegistry] = useState(
+    persisted.memberRegistry ?? [],
+  );
+  const [descriptions, setDescriptions] = useState(
+    persisted.descriptions ?? {},
+  );
   const [projectDescriptions, setProjectDescriptions] = useState(
     persisted.projectDescriptions ?? {},
   );
@@ -154,6 +183,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       role: role ?? undefined,
       address: contract.address ?? undefined,
       networkId: contract.networkId ?? undefined,
+      deployerAddress: contract.deployerAddress ?? undefined,
       demoCompany,
       memberRegistry,
       descriptions,
@@ -178,8 +208,13 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
 
   const identityFor = useCallback(
     (r: Role): RoleIdentity => {
-      const key = contract.address ?? undefined;
-      const id = getRoleIdentity(r, key);
+      // The admin identity is global: it is the deployer's identity used at
+      // deploy time, so re-attaching with a per-contract key would derive a
+      // different sk and admin circuits would fail with "Not admin".
+      const id =
+        r === "admin"
+          ? getRoleIdentity("admin")
+          : getRoleIdentity(r, contract.address ?? undefined);
       if (r === "company" && id.nonce) {
         setMyCompanyCommit(bytesToHex(companyCommitOf(id)));
       }
@@ -197,7 +232,8 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       subRef.current?.unsubscribe();
       const sub = c.ledger$(address).subscribe({
         next: (l) => setLedger(l),
-        error: (err) => console.error("[govfund] ledger subscription error", err),
+        error: (err) =>
+          console.error("[govfund] ledger subscription error", err),
       });
       subRef.current = sub;
       setClient(c);
@@ -207,14 +243,16 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
     [identityFor],
   );
 
-  // Re-seed the private state whenever the active role changes.
+  // Re-seed the private state whenever the active role changes. `attach` and
+  // `contract.address` are intentionally omitted: address changes are handled
+  // by the deploy/connect paths that call `attach` directly.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deliberate re-seed on role/api change
   useEffect(() => {
     if (api && contract.address && role) {
       attach(contract.address, role, api).catch((e) =>
         console.error("[govfund] attach/re-seed failed", e),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, api]);
 
   const dismissToast = useCallback((id: number) => {
@@ -242,8 +280,20 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
     setDeployed(null);
     setLedger(null);
     setRoleState(null);
-    setWallet({ connected: false, walletName: null, address: null, networkId: null, error: null });
-    setContract({ deployed: false, address: null, networkId: null, deployedAt: null, deployerAddress: null });
+    setWallet({
+      connected: false,
+      walletName: null,
+      address: null,
+      networkId: null,
+      error: null,
+    });
+    setContract({
+      deployed: false,
+      address: null,
+      networkId: null,
+      deployedAt: null,
+      deployerAddress: null,
+    });
     setMemberRegistry([]);
     setDescriptions({});
     setProjectDescriptions({});
@@ -279,7 +329,10 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
             await attach(contract.address, role, action.api);
           } catch (e) {
             console.error("[govfund] connect to contract failed", e);
-            toast(e instanceof Error ? e.message : "Failed to connect to contract", "error");
+            toast(
+              e instanceof Error ? e.message : "Failed to connect to contract",
+              "error",
+            );
           }
         }
         return;
@@ -289,7 +342,13 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         setClient(null);
         setDeployed(null);
         setLedger(null);
-        setWallet({ connected: false, walletName: null, address: null, networkId: null, error: null });
+        setWallet({
+          connected: false,
+          walletName: null,
+          address: null,
+          networkId: null,
+          error: null,
+        });
         return;
 
       case "WALLET_ERROR":
@@ -327,8 +386,11 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
             },
             admin,
           );
-          const address = (d as unknown as { deployTxData: { public: { contractAddress: string } } })
-            .deployTxData.public.contractAddress;
+          const address = (
+            d as unknown as {
+              deployTxData: { public: { contractAddress: string } };
+            }
+          ).deployTxData.public.contractAddress;
           setClient(c);
           setDeployed(d);
           setContract({
@@ -336,11 +398,22 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
             address,
             networkId: action.networkId,
             deployedAt: Math.floor(Date.now() / 1000),
-            deployerAddress: null,
+            deployerAddress: wallet.address,
           });
+          // The deployer is registered as the first member on-chain; mirror it
+          // in the local registry so counts and quorum match the contract.
+          const adminCommit = bytesToHex(
+            memberCommit(admin.sk!, new Uint8Array(32)),
+          );
+          setMemberRegistry((prev) =>
+            prev.some((m) => m.commit === adminCommit)
+              ? prev
+              : [{ commit: adminCommit, label: "Admin (deployer)" }, ...prev],
+          );
           const sub = c.ledger$(address).subscribe({
             next: (l) => setLedger(l),
-            error: (err) => console.error("[govfund] ledger subscription error", err),
+            error: (err) =>
+              console.error("[govfund] ledger subscription error", err),
           });
           subRef.current = sub;
           toast("Contract deployed.");
@@ -353,13 +426,9 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
 
       case "ADD_MEMBER":
       case "REMOVE_MEMBER":
-      case "SET_QUORUM":
-      case "SET_APPROVALS":
       case "CREATE_PROJECT":
       case "VOTE":
       case "FINALIZE":
-      case "CANCEL":
-      case "EXPIRE":
       case "FUND":
       case "APPROVE_STAGE":
       case "REJECT_STAGE":
@@ -384,7 +453,8 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       case "MERGE_DESCRIPTIONS":
         setDescriptions((prev) => {
           const next = { ...prev };
-          for (const d of action.descriptions) next[d.proposalId] = d.description;
+          for (const d of action.descriptions)
+            next[d.proposalId] = d.description;
           return next;
         });
         return;
@@ -416,16 +486,6 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      case "SET_QUORUM":
-        await c.setQuorumPercent(d, BigInt(action.percent));
-        toast("Quorum updated.");
-        return;
-
-      case "SET_APPROVALS":
-        await c.setApprovalsRequired(d, BigInt(action.required));
-        toast("Approvals updated.");
-        return;
-
       case "CREATE_PROJECT": {
         const member = getRoleIdentity("member", addr);
         const now = Math.floor(Date.now() / 1000);
@@ -433,8 +493,6 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         await c.createProject(d, {
           projectId,
           title: action.input.title,
-          deadline: BigInt(action.input.deadline),
-          fundingDeadline: BigInt(action.input.fundingDeadline),
           collateralRequired: BigInt(action.input.collateralRequired),
           maxStageRejections: BigInt(action.input.maxStageRejections),
         });
@@ -451,30 +509,27 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       }
 
       case "VOTE":
-        await c.vote(d, hexToBytes(action.projectId), hexToBytes(action.proposalId));
-        setMyVotes((prev) => ({ ...prev, [action.projectId]: action.proposalId }));
+        await c.vote(
+          d,
+          hexToBytes(action.projectId),
+          hexToBytes(action.proposalId),
+        );
+        setMyVotes((prev) => ({
+          ...prev,
+          [action.projectId]: action.proposalId,
+        }));
         toast("Vote recorded (anonymous nullifier).");
         return;
 
       case "FINALIZE":
-        await c.finalizeSelection(d, hexToBytes(action.projectId));
+        await c.settleProject(d, hexToBytes(action.projectId));
         toast("Winner selected.");
-        return;
-
-      case "CANCEL":
-        await c.cancelProject(d, hexToBytes(action.projectId));
-        toast("Project cancelled.");
-        return;
-
-      case "EXPIRE":
-        await c.expireFunding(d, hexToBytes(action.projectId));
-        toast("Funding expired; project cancelled.");
         return;
 
       case "FUND": {
         const member = getRoleIdentity("member", addr);
         const project = findProject(action.projectId);
-        if (!project || !project.winner.is_some) {
+        if (!project?.winner.is_some) {
           toast("No winner to fund.", "error");
           return;
         }
@@ -525,7 +580,11 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         const proposalId = random32();
         const stages = action.input.stages
           .map((s) => ({ amount: BigInt(Math.round(s.amount)) }))
-          .concat(Array.from({ length: 60 - action.input.stages.length }, () => ({ amount: 0n })));
+          .concat(
+            Array.from({ length: 60 - action.input.stages.length }, () => ({
+              amount: 0n,
+            })),
+          );
         const collateralCoin: ShieldedCoinInfo = {
           nonce: random32(),
           color: ZEROS,
@@ -554,8 +613,9 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       case "REVEAL_COMPANY": {
         const company = getRoleIdentity("company", addr);
         const project = findProject(action.projectId);
-        const winnerId =
-          project && project.winner.is_some ? bytesToHex(project.winner.value) : null;
+        const winnerId = project?.winner.is_some
+          ? bytesToHex(project.winner.value)
+          : null;
         if (!winnerId) {
           toast("No winner to reveal.", "error");
           return;
