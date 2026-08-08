@@ -1,9 +1,10 @@
-import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
-import type {
-  Ledger,
-  MerkleTreePath,
-  Witnesses,
-} from "../src/managed/govfund/contract/index.js";
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import {
+  type Ledger,
+  type MerkleTreePath,
+  pureCircuits,
+  type Witnesses,
+} from '../src/managed/govfund/contract/index.js';
 
 /**
  * Private state shared by every role in the tests. The simulator swaps
@@ -47,6 +48,13 @@ export const makeTestWitnesses = (): Witnesses<TestPrivateState> => ({
     privateState.sk,
   ],
 
+  member_pk: ({
+    privateState,
+  }: WitnessContext<Ledger, TestPrivateState>): [TestPrivateState, Uint8Array] => [
+    privateState,
+    pureCircuits.publicKeyOf(privateState.sk),
+  ],
+
   member_salt: ({
     privateState,
   }: WitnessContext<Ledger, TestPrivateState>): [TestPrivateState, Uint8Array] => [
@@ -81,7 +89,7 @@ export const makeTestWitnesses = (): Witnesses<TestPrivateState> => ({
         privateState,
         {
           leaf: commit,
-          path: Array.from({ length: 16 }, () => ({
+          path: Array.from({ length: 6 }, () => ({
             sibling: { field: 0n },
             goes_left: false,
           })),

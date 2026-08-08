@@ -1,18 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { ProjectStatus } from "../src/managed/govfund/contract/index.js";
-import {
-  GovFundSimulator,
-  INITIAL_TIME,
-  makeCoin,
-  makeStages,
-  memberCommitOf,
-} from "./GovFundSimulator.js";
-import {
-  adminState,
-  bytes,
-  companyState,
-  memberState,
-} from "./witnesses.js";
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ProjectStatus } from '../src/managed/govfund/contract/index.js';
+import { GovFundSimulator, makeCoin, makeStages, memberCommitOf } from './GovFundSimulator.js';
+import { adminState, bytes, companyState, memberState } from './witnesses.js';
 
 const ADMIN = adminState(0x01);
 const MEMBER_A = memberState(0x11);
@@ -28,8 +17,6 @@ const PROPOSAL_1 = bytes(0x41);
 const PROPOSAL_2 = bytes(0x42);
 const WINNER_COINPK = { bytes: bytes(0xaa) };
 
-const DEADLINE = BigInt(INITIAL_TIME + 1000);
-const FUNDING_DEADLINE = BigInt(INITIAL_TIME + 5000);
 const COLLATERAL = 10n;
 const BUDGET = 100n;
 const STAGES = makeStages([50n, 50n]);
@@ -47,39 +34,32 @@ const newGovSim = (
 /** Brings a project to InProgress with COMPANY_A as the revealed winner. */
 const toInProgress = (sim: GovFundSimulator): void => {
   sim.setActor(MEMBER_A);
-  sim.createProject(
-    PROJECT_ID, "Bridge", DEADLINE, FUNDING_DEADLINE, COLLATERAL, 3n,
-  );
+  sim.createProject(PROJECT_ID, 'Bridge', COLLATERAL, 3n);
   sim.setActor(COMPANY_A);
-  sim.submitProposal(
-    PROJECT_ID, PROPOSAL_1, BUDGET, COLLATERAL, 2n, STAGES, makeCoin(COLLATERAL),
-  );
+  sim.submitProposal(PROJECT_ID, PROPOSAL_1, BUDGET, COLLATERAL, 2n, STAGES, makeCoin(COLLATERAL));
   sim.setActor(COMPANY_B);
-  sim.submitProposal(
-    PROJECT_ID, PROPOSAL_2, BUDGET, COLLATERAL, 2n, STAGES, makeCoin(COLLATERAL),
-  );
+  sim.submitProposal(PROJECT_ID, PROPOSAL_2, BUDGET, COLLATERAL, 2n, STAGES, makeCoin(COLLATERAL));
   sim.setActor(MEMBER_A);
   sim.vote(PROJECT_ID, PROPOSAL_1);
   sim.setActor(MEMBER_B);
   sim.vote(PROJECT_ID, PROPOSAL_1);
-  sim.setBlockTime(Number(DEADLINE) + 1);
-  sim.finalizeSelection(PROJECT_ID);
+  sim.settleProject(PROJECT_ID);
   sim.setActor(COMPANY_A);
   sim.revealCompany(PROJECT_ID, PROPOSAL_1, COMPANY_A.nonce!, WINNER_COINPK);
   sim.setActor(MEMBER_A);
   sim.fundProject(PROJECT_ID, makeCoin(BUDGET));
 };
 
-describe("GovFund vesting & money", () => {
+describe('GovFund vesting & money', () => {
   let sim: GovFundSimulator;
 
-  describe("requestPayment", () => {
+  describe('requestPayment', () => {
     beforeEach(() => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
     });
 
-    it("opens the current stage for review", () => {
+    it('opens the current stage for review', () => {
       sim.setActor(COMPANY_A);
       sim.requestPayment(PROJECT_ID);
 
@@ -88,22 +68,20 @@ describe("GovFund vesting & money", () => {
       expect(p.stageAttempt).toEqual(1n);
     });
 
-    it("fails for a non-winner", () => {
+    it('fails for a non-winner', () => {
       sim.setActor(COMPANY_B);
-      expect(() => sim.requestPayment(PROJECT_ID)).toThrow("Not the winner");
+      expect(() => sim.requestPayment(PROJECT_ID)).toThrow('Not the winner');
     });
 
-    it("fails when a payment is already requested", () => {
+    it('fails when a payment is already requested', () => {
       sim.setActor(COMPANY_A);
       sim.requestPayment(PROJECT_ID);
-      expect(() => sim.requestPayment(PROJECT_ID)).toThrow(
-        "Payment already requested",
-      );
+      expect(() => sim.requestPayment(PROJECT_ID)).toThrow('Payment already requested');
     });
   });
 
-  describe("approveStage", () => {
-    it("releases the stage once the reviewer threshold is met", () => {
+  describe('approveStage', () => {
+    it('releases the stage once the reviewer threshold is met', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
       const potBefore = sim.getLedger().pot.value;
@@ -120,7 +98,7 @@ describe("GovFund vesting & money", () => {
       expect(sim.getLedger().pot.value).toEqual(potBefore - 50n);
     });
 
-    it("needs distinct members to reach the threshold", () => {
+    it('needs distinct members to reach the threshold', () => {
       sim = newGovSim({ approvalsRequired: 2n });
       toInProgress(sim);
 
@@ -142,7 +120,7 @@ describe("GovFund vesting & money", () => {
       expect(p2.stagePending).toBe(false);
     });
 
-    it("blocks the same member acting twice on a stage", () => {
+    it('blocks the same member acting twice on a stage', () => {
       sim = newGovSim({ approvalsRequired: 2n });
       toInProgress(sim);
 
@@ -151,32 +129,28 @@ describe("GovFund vesting & money", () => {
 
       sim.setActor(MEMBER_A);
       sim.approveStage(PROJECT_ID);
-      expect(() => sim.approveStage(PROJECT_ID)).toThrow(
-        "Already acted on this stage",
-      );
+      expect(() => sim.approveStage(PROJECT_ID)).toThrow('Already acted on this stage');
     });
 
-    it("fails when no payment is requested", () => {
+    it('fails when no payment is requested', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
       sim.setActor(MEMBER_A);
-      expect(() => sim.approveStage(PROJECT_ID)).toThrow(
-        "No payment requested",
-      );
+      expect(() => sim.approveStage(PROJECT_ID)).toThrow('No payment requested');
     });
 
-    it("fails for a non-member", () => {
+    it('fails for a non-member', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
       sim.setActor(COMPANY_A);
       sim.requestPayment(PROJECT_ID);
       sim.setActor(adminState(0x99));
-      expect(() => sim.approveStage(PROJECT_ID)).toThrow("Not a member");
+      expect(() => sim.approveStage(PROJECT_ID)).toThrow('Not a member');
     });
 
-    it("completes the project and returns the winner collateral on the last stage", () => {
+    it('completes the project and returns the winner collateral on the last stage', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
       const potBefore = sim.getLedger().pot.value; // 120 = budget + 2 collaterals
@@ -199,8 +173,8 @@ describe("GovFund vesting & money", () => {
     });
   });
 
-  describe("rejectStage", () => {
-    it("closes the review window so the company can retry", () => {
+  describe('rejectStage', () => {
+    it('closes the review window so the company can retry', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
@@ -211,7 +185,7 @@ describe("GovFund vesting & money", () => {
       sim.rejectStage(PROJECT_ID);
 
       // window closed: further review fails until a new request
-      expect(() => sim.approveStage(PROJECT_ID)).toThrow("No payment requested");
+      expect(() => sim.approveStage(PROJECT_ID)).toThrow('No payment requested');
       expect(sim.getLedger().projects.lookup(PROJECT_ID).stageRejections).toEqual(1n);
 
       // company retries on a fresh attempt
@@ -220,7 +194,7 @@ describe("GovFund vesting & money", () => {
       expect(sim.getLedger().projects.lookup(PROJECT_ID).stagePending).toBe(true);
     });
 
-    it("blocks further requests once the rejection limit is reached", () => {
+    it('blocks further requests once the rejection limit is reached', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
@@ -235,14 +209,12 @@ describe("GovFund vesting & money", () => {
       expect(sim.getLedger().projects.lookup(PROJECT_ID).stageRejections).toEqual(3n);
 
       sim.setActor(COMPANY_A);
-      expect(() => sim.requestPayment(PROJECT_ID)).toThrow(
-        "Max rejections reached",
-      );
+      expect(() => sim.requestPayment(PROJECT_ID)).toThrow('Max rejections reached');
     });
   });
 
-  describe("voteTerminate", () => {
-    it("terminates at quorum, slashing collateral and refunding remaining funds", () => {
+  describe('voteTerminate', () => {
+    it('terminates at quorum, slashing collateral and refunding remaining funds', () => {
       sim = newGovSim({ approvalsRequired: 1n, quorumPercent: 50n });
       toInProgress(sim);
       const potBefore = sim.getLedger().pot.value; // 120
@@ -262,7 +234,7 @@ describe("GovFund vesting & money", () => {
       expect(sim.getLedger().pot.value).toEqual(potBefore - 50n - 60n);
     });
 
-    it("requires quorum before terminating", () => {
+    it('requires quorum before terminating', () => {
       sim = newGovSim({ approvalsRequired: 1n, quorumPercent: 100n });
       toInProgress(sim);
 
@@ -270,33 +242,27 @@ describe("GovFund vesting & money", () => {
       sim.voteTerminate(PROJECT_ID);
 
       // not yet quorum (2 members needed at 100%)
-      expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(
-        ProjectStatus.InProgress,
-      );
+      expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(ProjectStatus.InProgress);
       expect(sim.getLedger().projects.lookup(PROJECT_ID).terminateVotes).toEqual(1n);
 
       sim.setActor(MEMBER_B);
       sim.voteTerminate(PROJECT_ID);
 
-      expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(
-        ProjectStatus.Terminated,
-      );
+      expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(ProjectStatus.Terminated);
     });
 
-    it("blocks a member voting to terminate twice", () => {
+    it('blocks a member voting to terminate twice', () => {
       sim = newGovSim({ approvalsRequired: 1n, quorumPercent: 100n });
       toInProgress(sim);
 
       sim.setActor(MEMBER_A);
       sim.voteTerminate(PROJECT_ID);
-      expect(() => sim.voteTerminate(PROJECT_ID)).toThrow(
-        "Already voted to terminate",
-      );
+      expect(() => sim.voteTerminate(PROJECT_ID)).toThrow('Already voted to terminate');
     });
   });
 
-  describe("withdrawCollateral", () => {
-    it("refunds a losing proposal after selection", () => {
+  describe('withdrawCollateral', () => {
+    it('refunds a losing proposal after selection', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
       const potBefore = sim.getLedger().pot.value; // 120
@@ -317,10 +283,10 @@ describe("GovFund vesting & money", () => {
       sim.setActor(COMPANY_A);
       expect(() =>
         sim.withdrawCollateral(PROJECT_ID, PROPOSAL_1, COMPANY_A.nonce!, WINNER_COINPK),
-      ).toThrow("Winner collateral is held");
+      ).toThrow('Winner collateral is held');
     });
 
-    it("fails for a wrong commitment nonce", () => {
+    it('fails for a wrong commitment nonce', () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
@@ -329,14 +295,13 @@ describe("GovFund vesting & money", () => {
         sim.withdrawCollateral(PROJECT_ID, PROPOSAL_2, bytes(0xff), {
           bytes: bytes(0xbb),
         }),
-      ).toThrow("Invalid reveal");
+      ).toThrow('Invalid reveal');
     });
 
-    it("allows the winner to withdraw after the project is cancelled", () => {
+    it("holds the winner's collateral when the project is terminated", () => {
       sim = newGovSim({ approvalsRequired: 1n });
       toInProgress(sim);
 
-      // cancel via expireFunding path: reset to a Selected state first
       sim.setActor(MEMBER_A);
       sim.voteTerminate(PROJECT_ID); // terminate (quorum 50% = 1)
       const status = sim.getLedger().projects.lookup(PROJECT_ID).status;
@@ -345,7 +310,7 @@ describe("GovFund vesting & money", () => {
       sim.setActor(COMPANY_A);
       expect(() =>
         sim.withdrawCollateral(PROJECT_ID, PROPOSAL_1, COMPANY_A.nonce!, WINNER_COINPK),
-      ).toThrow("Winner collateral is held");
+      ).toThrow('Winner collateral is held');
     });
   });
 });

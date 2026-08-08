@@ -1,13 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { pureCircuits, ProjectStatus } from "../src/managed/govfund/contract/index.js";
-import {
-  GovFundSimulator,
-  INITIAL_TIME,
-  makeCoin,
-  makeStages,
-  memberCommitOf,
-} from "./GovFundSimulator.js";
-import { adminState, bytes, companyState, memberState } from "./witnesses.js";
+import { describe, expect, it } from 'vitest';
+import { ProjectStatus, pureCircuits } from '../src/managed/govfund/contract/index.js';
+import { GovFundSimulator, makeCoin, makeStages, memberCommitOf } from './GovFundSimulator.js';
+import { adminState, bytes, companyState, memberState } from './witnesses.js';
 
 // ---------------------------------------------------------------------------
 // End-to-end demo of the real application workflow.
@@ -30,11 +24,7 @@ const MEMBERS = [
 const [M1, M2, M3, M4, M5] = MEMBERS;
 const COMMITS = MEMBERS.map((m) => memberCommitOf(m.sk!, m.salt!));
 
-const COMPANIES = [
-  companyState(0x21),
-  companyState(0x22),
-  companyState(0x23),
-];
+const COMPANIES = [companyState(0x21), companyState(0x22), companyState(0x23)];
 const [CA, CB, CC] = COMPANIES;
 
 const PROJECT_ID = bytes(0x31);
@@ -42,8 +32,6 @@ const PROPOSAL_A = bytes(0x41);
 const PROPOSAL_B = bytes(0x42);
 const PROPOSAL_C = bytes(0x43);
 
-const DEADLINE = BigInt(INITIAL_TIME + 1000);
-const FUNDING_DEADLINE = BigInt(INITIAL_TIME + 5000);
 const COLLATERAL = 50n;
 const BUDGET_A = 1000n;
 const STAGES_A = makeStages([400n, 400n, 200n]);
@@ -57,13 +45,13 @@ const step = (label: string): void => {
   console.log(`\n  [${stepCount}] ${label}`);
 };
 
-describe("GovFund end-to-end workflow (demo)", () => {
-  it("runs a project from creation to completed payment", () => {
+describe('GovFund end-to-end workflow (demo)', () => {
+  it('runs a project from creation to completed payment', () => {
     stepCount = 0;
     const sim = new GovFundSimulator({ admin: ADMIN });
 
     // ----------------------------------------------------------------
-    step("Deploy: the government deploys GovFund with its configuration");
+    step('Deploy: the government deploys GovFund with its configuration');
     // ----------------------------------------------------------------
     let s = sim.getLedger();
     expect(s.admin).toEqual(pureCircuits.publicKeyOf(ADMIN.sk!));
@@ -73,33 +61,28 @@ describe("GovFund end-to-end workflow (demo)", () => {
     console.log(`      quorum ${s.quorumPercent}%, ${s.approvalsRequired} reviewers per stage`);
 
     // ----------------------------------------------------------------
-    step("Admin registers the 5 government members");
+    step('Admin registers the 5 government members');
     // ----------------------------------------------------------------
     sim.setActor(ADMIN);
-    COMMITS.forEach((commit) => sim.addMember(commit));
+    COMMITS.forEach((commit) => {
+      sim.addMember(commit);
+    });
     s = sim.getLedger();
     expect(s.Mem_memberCount).toEqual(5n);
-    console.log("      5 members added");
+    console.log('      5 members added');
 
     // ----------------------------------------------------------------
-    step("A member opens the project \"Suspension Bridge\"");
+    step('A member opens the project "Suspension Bridge"');
     // ----------------------------------------------------------------
     sim.setActor(M1);
-    sim.createProject(
-      PROJECT_ID,
-      "Suspension Bridge",
-      DEADLINE,
-      FUNDING_DEADLINE,
-      COLLATERAL,
-      3n,
-    );
+    sim.createProject(PROJECT_ID, 'Suspension Bridge', COLLATERAL, 3n);
     let p = sim.getLedger().projects.lookup(PROJECT_ID);
     expect(p.status).toEqual(ProjectStatus.Voting);
     expect(p.collateralRequired).toEqual(COLLATERAL);
-    console.log("      project open for bids");
+    console.log('      project open for bids');
 
     // ----------------------------------------------------------------
-    step("Three companies bid, each depositing the 50 collateral");
+    step('Three companies bid, each depositing the 50 collateral');
     // ----------------------------------------------------------------
     const bid = (
       company: typeof CA,
@@ -126,36 +109,40 @@ describe("GovFund end-to-end workflow (demo)", () => {
       expect(proposal.collateral).toEqual(COLLATERAL);
       expect(proposal.voteCount).toEqual(0n);
     }
-    console.log("      3 proposals received, identities committed");
+    console.log('      3 proposals received, identities committed');
 
     // ----------------------------------------------------------------
-    step("Members vote anonymously (quorum is 3 of 5)");
+    step('Members vote anonymously (quorum is 3 of 5)');
     // ----------------------------------------------------------------
-    sim.setActor(M1); sim.vote(PROJECT_ID, PROPOSAL_A);
-    sim.setActor(M2); sim.vote(PROJECT_ID, PROPOSAL_C);
-    sim.setActor(M3); sim.vote(PROJECT_ID, PROPOSAL_A);
-    sim.setActor(M4); sim.vote(PROJECT_ID, PROPOSAL_B);
-    sim.setActor(M5); sim.vote(PROJECT_ID, PROPOSAL_A);
+    sim.setActor(M1);
+    sim.vote(PROJECT_ID, PROPOSAL_A);
+    sim.setActor(M2);
+    sim.vote(PROJECT_ID, PROPOSAL_C);
+    sim.setActor(M3);
+    sim.vote(PROJECT_ID, PROPOSAL_A);
+    sim.setActor(M4);
+    sim.vote(PROJECT_ID, PROPOSAL_B);
+    sim.setActor(M5);
+    sim.vote(PROJECT_ID, PROPOSAL_A);
 
     p = sim.getLedger().projects.lookup(PROJECT_ID);
     expect(p.totalVotes).toEqual(5n);
     expect(sim.getLedger().proposals.lookup(PROPOSAL_A).voteCount).toEqual(3n);
     expect(sim.getLedger().proposals.lookup(PROPOSAL_B).voteCount).toEqual(1n);
     expect(sim.getLedger().proposals.lookup(PROPOSAL_C).voteCount).toEqual(1n);
-    console.log("      A: 3 votes, B: 1 vote, C: 1 vote");
+    console.log('      A: 3 votes, B: 1 vote, C: 1 vote');
 
     // ----------------------------------------------------------------
-    step("Voting closes and the plurality winner is selected");
+    step('Quorum is met and the plurality winner is selected');
     // ----------------------------------------------------------------
-    sim.setBlockTime(Number(DEADLINE) + 1);
-    sim.finalizeSelection(PROJECT_ID);
+    sim.settleProject(PROJECT_ID);
     p = sim.getLedger().projects.lookup(PROJECT_ID);
     expect(p.status).toEqual(ProjectStatus.Selected);
     expect(p.winner).toEqual({ is_some: true, value: PROPOSAL_A });
-    console.log("      winner: Company A");
+    console.log('      winner: Company A');
 
     // ----------------------------------------------------------------
-    step("The losing companies reclaim their collateral");
+    step('The losing companies reclaim their collateral');
     // ----------------------------------------------------------------
     const potAfterBids = sim.getLedger().pot.value; // 150
     sim.setActor(CB);
@@ -163,16 +150,16 @@ describe("GovFund end-to-end workflow (demo)", () => {
     sim.setActor(CC);
     sim.withdrawCollateral(PROJECT_ID, PROPOSAL_C, CC.nonce!, { bytes: bytes(0xcc) });
     expect(sim.getLedger().pot.value).toEqual(potAfterBids - 2n * COLLATERAL);
-    console.log("      B and C refunded");
+    console.log('      B and C refunded');
 
     // ----------------------------------------------------------------
-    step("The winner reveals its identity so it can be paid");
+    step('The winner reveals its identity so it can be paid');
     // ----------------------------------------------------------------
     sim.setActor(CA);
     sim.revealCompany(PROJECT_ID, PROPOSAL_A, CA.nonce!, WINNER_COINPK);
     const winnerCompany = sim.getLedger().projects.lookup(PROJECT_ID).winnerCompany;
     expect(winnerCompany.is_some).toBe(true);
-    console.log("      Company A revealed");
+    console.log('      Company A revealed');
 
     // ----------------------------------------------------------------
     step("A government member funds the winner's 1000 budget");
@@ -183,10 +170,10 @@ describe("GovFund end-to-end workflow (demo)", () => {
     expect(p.status).toEqual(ProjectStatus.InProgress);
     expect(p.budget).toEqual(BUDGET_A);
     expect(sim.getLedger().pot.value).toEqual(1050n); // 1000 budget + 50 winner collateral
-    console.log("      contract now holds 1000 budget + 50 collateral");
+    console.log('      contract now holds 1000 budget + 50 collateral');
 
     // ----------------------------------------------------------------
-    step("Vesting: stage 1 (400) approved by reviewers M1 and M2");
+    step('Vesting: stage 1 (400) approved by reviewers M1 and M2');
     // ----------------------------------------------------------------
     sim.setActor(CA);
     sim.requestPayment(PROJECT_ID);
@@ -197,10 +184,10 @@ describe("GovFund end-to-end workflow (demo)", () => {
     p = sim.getLedger().projects.lookup(PROJECT_ID);
     expect(p.currentStage).toEqual(1n);
     expect(sim.getLedger().pot.value).toEqual(650n);
-    console.log("      400 released to Company A");
+    console.log('      400 released to Company A');
 
     // ----------------------------------------------------------------
-    step("Vesting: stage 2 (400) approved by reviewers M3 and M4");
+    step('Vesting: stage 2 (400) approved by reviewers M3 and M4');
     // ----------------------------------------------------------------
     sim.setActor(CA);
     sim.requestPayment(PROJECT_ID);
@@ -211,10 +198,10 @@ describe("GovFund end-to-end workflow (demo)", () => {
     p = sim.getLedger().projects.lookup(PROJECT_ID);
     expect(p.currentStage).toEqual(2n);
     expect(sim.getLedger().pot.value).toEqual(250n);
-    console.log("      400 released to Company A");
+    console.log('      400 released to Company A');
 
     // ----------------------------------------------------------------
-    step("Vesting: stage 3 (200) approved by reviewers M5 and M1");
+    step('Vesting: stage 3 (200) approved by reviewers M5 and M1');
     // ----------------------------------------------------------------
     sim.setActor(CA);
     sim.requestPayment(PROJECT_ID);
@@ -222,7 +209,7 @@ describe("GovFund end-to-end workflow (demo)", () => {
     sim.approveStage(PROJECT_ID);
     sim.setActor(M1);
     sim.approveStage(PROJECT_ID);
-    console.log("      200 released to Company A");
+    console.log('      200 released to Company A');
 
     // ----------------------------------------------------------------
     step("The project completes and the winner's collateral is returned");
@@ -232,7 +219,7 @@ describe("GovFund end-to-end workflow (demo)", () => {
     expect(p.currentStage).toEqual(3n);
     expect(p.disbursed).toEqual(BUDGET_A);
     expect(sim.getLedger().potHasCoin).toBe(false); // everything paid out
-    console.log("      project completed, 1000 paid out, collateral returned");
+    console.log('      project completed, 1000 paid out, collateral returned');
     console.log(`      pot fully drained: ${!sim.getLedger().potHasCoin}`);
   });
 });
