@@ -1,4 +1,4 @@
-import { fmtNight } from '../lib/format';
+import { fmtNight, shortAddr } from '../lib/format';
 import { sumStages } from '../lib/validation';
 import { canWithdraw, isWinner, mineOf } from '../state/guards';
 import { useGovFund } from '../state/provider';
@@ -87,7 +87,7 @@ function ProposalRow({
                 <LockIcon size={11} /> identity hidden
               </span>
             ) : null}
-            <span className="font-mono text-[11px] text-muted">{proposal.id}</span>
+            <span className="font-mono text-[11px] text-muted">{shortAddr(proposal.id)}</span>
             {winner ? (
               <span className="rounded-full bg-selected px-2 py-0.5 text-[11px] font-medium text-white">
                 Winner

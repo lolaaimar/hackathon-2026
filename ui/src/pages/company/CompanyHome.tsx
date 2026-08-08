@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { BuildingIcon, CheckIcon } from '../../components/ui/icons';
-import { fmtNight } from '../../lib/format';
+import { fmtNight, shortAddr } from '../../lib/format';
 import { canWithdraw, isWinner, mineOf } from '../../state/guards';
 import { useGovFund } from '../../state/provider';
 import { DEMO_COMPANIES } from '../../types';
@@ -74,9 +74,9 @@ export function CompanyHome() {
                 <li key={proposal.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{project.title}</p>
-                    <p className="text-[12px] text-muted">
-                      <span className="font-mono">{proposal.id}</span> · {fmtNight(proposal.budget)}{' '}
-                      ·{' '}
+                    <p className="truncate text-[12px] text-muted">
+                      <span className="font-mono">{shortAddr(proposal.id)}</span> ·{' '}
+                      {fmtNight(proposal.budget)} ·{' '}
                       {isWinner(project, proposal)
                         ? 'winner'
                         : project.status === 'Voting'

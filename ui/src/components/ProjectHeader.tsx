@@ -1,4 +1,4 @@
-import { fmtNight } from '../lib/format';
+import { fmtNight, shortAddr } from '../lib/format';
 import type { ProjectInfo } from '../types';
 import { STATUS_META } from '../types';
 import { LifecycleTimeline } from './LifecycleTimeline';
@@ -11,7 +11,9 @@ export function ProjectHeader({ p }: { p: ProjectInfo }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[11px] text-muted">{p.id}</span>
+        <span className="font-mono text-[11px] text-muted" title={p.id}>
+          {shortAddr(p.id)}
+        </span>
         <StatusBadge status={p.status} />
         <span className="text-[12px] text-muted">opened by {p.createdBy}</span>
       </div>

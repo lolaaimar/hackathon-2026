@@ -209,13 +209,15 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
 
   const identityFor = useCallback(
     (r: Role): RoleIdentity => {
-      // The admin identity is global: it is the deployer's identity used at
-      // deploy time, so re-attaching with a per-contract key would derive a
-      // different sk and admin circuits would fail with "Not admin".
+      // Admin and member share the deployer's global identity: it is the
+      // identity used at deploy time (registered as the first member with a
+      // zero-salt leaf), so re-attaching with a per-contract key would derive a
+      // different sk and admin/member circuits would fail. Only the company
+      // role uses a per-contract identity.
       const id =
-        r === "admin"
-          ? getRoleIdentity("admin")
-          : getRoleIdentity(r, contract.address ?? undefined);
+        r === "company"
+          ? getRoleIdentity(r, contract.address ?? undefined)
+          : getRoleIdentity("admin");
       if (r === "company" && id.nonce) {
         setMyCompanyCommit(bytesToHex(companyCommitOf(id)));
       }
