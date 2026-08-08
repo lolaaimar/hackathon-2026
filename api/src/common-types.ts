@@ -1,6 +1,5 @@
 import { Contract, type GovFundPrivateState } from '../../contract/src/index.js';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
-import type { DeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 
 // Provable circuit IDs produced by compactc for the main GovFund contract,
 // taken from the generated `managed/govfund/contract/index.d.ts`.
@@ -35,7 +34,3 @@ export type GovFundProviders = MidnightProviders<
 >;
 
 export type GovFundContract = Contract.Contract<GovFundPrivateState>;
-
-export type DeployedGovFundContract =
-  | DeployedContract<GovFundContract>
-  | FoundContract<GovFundContract>;

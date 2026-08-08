@@ -7,7 +7,7 @@ export const MEMBER_DEPTH = 16;
  * Private state shared by every role. Each role only populates the fields it
  * needs:
  *  - admin:   sk
- *  - member:  sk, salt, memberLeaves
+ *  - member:  sk, salt
  *  - company: sk, nonce, coinPk
  */
 export type GovFundPrivateState = {
@@ -15,9 +15,8 @@ export type GovFundPrivateState = {
   readonly salt?: Uint8Array;
   readonly nonce?: Uint8Array;
   readonly coinPk?: ZswapCoinPublicKey;
-  readonly memberLeaves?: Uint8Array[];
 };
 
 export type AdminPrivateState = Pick<GovFundPrivateState, "sk">;
-export type MemberPrivateState = Pick<GovFundPrivateState, "sk" | "salt" | "memberLeaves">;
+export type MemberPrivateState = Pick<GovFundPrivateState, "sk" | "salt">;
 export type CompanyPrivateState = Pick<GovFundPrivateState, "sk" | "nonce" | "coinPk">;
