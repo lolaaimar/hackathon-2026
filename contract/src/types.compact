@@ -39,7 +39,9 @@ export struct Proposal {
 }
 
 /**
- * @description The on-chain state of a single project.
+ * @description The on-chain state of a single project. `stageCount`, `stageAmount` and
+ * `winnerCollateral` are cached from the winning `Proposal` (at settle/request time) so the
+ * vesting circuits do not need to look up the full proposal, keeping them small.
  */
 export struct ProjectInfo {
   id: Bytes<32>;
@@ -58,6 +60,9 @@ export struct ProjectInfo {
   stageApprovals: Uint<16>;
   stageRejections: Uint<16>;
   stageAttempt: Uint<16>;
+  stageCount: Uint<16>;
+  stageAmount: Uint<64>;
+  winnerCollateral: Uint<64>;
   terminateVotes: Uint<16>;
   disbursed: Uint<64>;
 }

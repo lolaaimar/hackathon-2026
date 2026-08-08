@@ -1,13 +1,10 @@
-export * as Contract from './managed/govfund/contract/index.js';
-export { Contract as GovFund } from './managed/govfund/contract/index.js';
-export { ledger } from './managed/govfund/contract/index.js';
 export type {
   Ledger,
-  MerkleTreePath,
   Maybe,
-  Proposal,
+  MerkleTreePath,
   ProjectInfo,
   ProjectStatus,
+  Proposal,
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
   Stage,
@@ -15,5 +12,11 @@ export type {
   Witnesses,
   ZswapCoinPublicKey,
 } from './managed/govfund/contract/index.js';
+// biome-ignore lint/performance/noBarrelFile: public package entry point
+// biome-ignore lint/performance/noReExportAll: public package entry point
+export * as Contract from './managed/govfund/contract/index.js';
+export { Contract as GovFund, ledger } from './managed/govfund/contract/index.js';
+// biome-ignore lint/performance/noReExportAll: public package entry point
 export * from './types.js';
+// biome-ignore lint/performance/noReExportAll: public package entry point
 export * from './witnesses.js';

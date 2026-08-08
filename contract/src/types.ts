@@ -1,4 +1,4 @@
-import { ZswapCoinPublicKey } from "./managed/govfund/contract/index.js";
+import type { ZswapCoinPublicKey } from './managed/govfund/contract/index.js';
 
 export const MAX_STAGES = 12;
 export const MEMBER_DEPTH = 16;
@@ -17,6 +17,6 @@ export type GovFundPrivateState = {
   readonly coinPk?: ZswapCoinPublicKey;
 };
 
-export type AdminPrivateState = Pick<GovFundPrivateState, "sk">;
-export type MemberPrivateState = Pick<GovFundPrivateState, "sk" | "salt">;
-export type CompanyPrivateState = Pick<GovFundPrivateState, "sk" | "nonce" | "coinPk">;
+export type AdminPrivateState = Pick<GovFundPrivateState, 'sk'>;
+export type MemberPrivateState = Pick<GovFundPrivateState, 'sk' | 'salt'>;
+export type CompanyPrivateState = Pick<GovFundPrivateState, 'sk' | 'nonce' | 'coinPk'>;
