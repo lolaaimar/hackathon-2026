@@ -1,4 +1,4 @@
-    # GovFund
+# GovFund
 
 A Midnight (Compact) smart contract for government procurement with private
 voting and stage-based vesting. A single contract instance manages many projects.
