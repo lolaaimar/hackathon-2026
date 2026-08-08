@@ -23,7 +23,7 @@ import type { TestPrivateState } from "./witnesses.js";
 export const INITIAL_TIME = 1_700_000_000;
 export const COIN_PK = "0".repeat(64);
 export const ZERO_TOKEN = new Uint8Array(32);
-export const MAX_STAGES = 60;
+export const MAX_STAGES = 12;
 
 export type GovFundConfig = {
   admin?: TestPrivateState;
@@ -38,7 +38,7 @@ export type GovFundConfig = {
 export const memberCommitOf = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   pureCircuits.memberCommit(pureCircuits.publicKeyOf(sk), salt);
 
-/** Builds a 60-slot stage schedule; unused slots are zero and must sum to `budget`. */
+/** Builds a 12-slot stage schedule; unused slots are zero and must sum to `budget`. */
 export const makeStages = (amounts: bigint[]): Stage[] => {
   const stages: Stage[] = amounts.map((amount) => ({ amount }));
   while (stages.length < MAX_STAGES) {

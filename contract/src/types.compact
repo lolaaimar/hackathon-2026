@@ -5,7 +5,6 @@ export enum ProjectStatus {
   Selected,
   InProgress,
   Completed,
-  Cancelled,
   Terminated
 }
 
@@ -34,7 +33,7 @@ export struct Proposal {
   budget: Uint<64>;
   collateral: Uint<64>;
   companyCommit: Bytes<32>;
-  stages: Vector<60, Stage>;
+  stages: Vector<12, Stage>;
   stageCount: Uint<16>;
   voteCount: Uint<16>;
 }
@@ -47,8 +46,6 @@ export struct ProjectInfo {
   title: Opaque<"string">;
   budget: Uint<64>;
   status: ProjectStatus;
-  deadline: Uint<64>;
-  fundingDeadline: Uint<64>;
   collateralRequired: Uint<64>;
   maxStageRejections: Uint<16>;
   totalVotes: Uint<16>;

@@ -1,6 +1,6 @@
 import { ZswapCoinPublicKey } from "./managed/govfund/contract/index.js";
 
-export const MAX_STAGES = 10;
+export const MAX_STAGES = 12;
 export const MEMBER_DEPTH = 16;
 
 /**
