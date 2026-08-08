@@ -1,10 +1,10 @@
-import type { ProjectInfo, Proposal } from "../types";
-import { Button } from "./ui/Button";
-import { AlertIcon, CheckIcon, LockIcon, VoteIcon } from "./ui/icons";
-import { fmtNight } from "../lib/format";
-import { canWithdraw, isWinner, mineOf } from "../state/guards";
-import { useGovFund } from "../state/provider";
-import { sumStages } from "../lib/validation";
+import { fmtNight } from '../lib/format';
+import { sumStages } from '../lib/validation';
+import { canWithdraw, isWinner, mineOf } from '../state/guards';
+import { useGovFund } from '../state/provider';
+import type { ProjectInfo, Proposal } from '../types';
+import { Button } from './ui/Button';
+import { AlertIcon, CheckIcon, LockIcon, VoteIcon } from './ui/icons';
 
 export function ProposalList({
   project,
@@ -25,7 +25,6 @@ export function ProposalList({
           key={pr.id}
           proposal={pr}
           project={project}
-          now={state.now}
           mine={mineOf(state, pr)}
           onVote={onVote}
           onWithdraw={onWithdraw}
@@ -38,46 +37,41 @@ export function ProposalList({
 function ProposalRow({
   proposal,
   project,
-  now,
   mine,
   onVote,
   onWithdraw,
 }: {
   proposal: Proposal;
   project: ProjectInfo;
-  now: number;
   mine: boolean;
   onVote?: (proposalId: string) => void;
   onWithdraw?: (proposalId: string) => void;
 }) {
-  const voteOk =
-    project.status === "Voting" &&
-    now < project.deadline &&
-    project.voted === null;
+  const voteOk = project.status === 'Voting' && project.voted === null;
   const withdrawOk = canWithdraw(project, proposal);
   const winner = isWinner(project, proposal);
   const revealed = proposal.revealed || mine;
   const total = proposal.stages.length;
 
   const initials = proposal.companyName
-    .split(" ")
+    .split(' ')
     .map((w) => w[0])
     .slice(0, 2)
-    .join("")
+    .join('')
     .toUpperCase();
 
   return (
     <div
       className={`rounded-2xl border bg-white p-4 transition-colors ${
-        winner ? "border-selected/60 bg-selected-soft/50" : "border-line"
+        winner ? 'border-selected/60 bg-selected-soft/50' : 'border-line'
       }`}
     >
       <div className="flex items-start gap-4">
         <span
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[13px] font-bold"
           style={{
-            backgroundColor: winner ? "var(--color-selected-soft)" : "var(--color-panel-strong)",
-            color: winner ? "var(--color-selected)" : "var(--color-muted)",
+            backgroundColor: winner ? 'var(--color-selected-soft)' : 'var(--color-panel-strong)',
+            color: winner ? 'var(--color-selected)' : 'var(--color-muted)',
           }}
         >
           {initials}
@@ -86,7 +80,7 @@ function ProposalRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h4 className="text-sm font-semibold text-ink">
-              {revealed ? proposal.companyName : "Anonymous bidder"}
+              {revealed ? proposal.companyName : 'Anonymous bidder'}
             </h4>
             {!revealed ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-muted">
@@ -114,15 +108,13 @@ function ProposalRow({
                   className="h-full first:rounded-l-full last:rounded-r-full"
                   style={{
                     width: `${(s.amount / proposal.budget) * 100}%`,
-                    backgroundColor: winner
-                      ? "var(--color-selected)"
-                      : "var(--color-progress)",
+                    backgroundColor: winner ? 'var(--color-selected)' : 'var(--color-progress)',
                   }}
                 />
               ))}
             </div>
             <p className="text-[11px] text-muted">
-              {total} stage{total === 1 ? "" : "s"} · {fmtNight(sumStages(proposal.stages))}
+              {total} stage{total === 1 ? '' : 's'} · {fmtNight(sumStages(proposal.stages))}
             </p>
           </div>
 
@@ -134,7 +126,7 @@ function ProposalRow({
             <div>
               <dt className="inline text-muted">Collateral </dt>
               <dd className="tabular inline font-semibold text-ink">
-                {proposal.withdrawn ? "withdrawn" : fmtNight(proposal.collateral)}
+                {proposal.withdrawn ? 'withdrawn' : fmtNight(proposal.collateral)}
               </dd>
             </div>
             {proposal.withdrawn ? (
@@ -173,7 +165,10 @@ function ProposalRow({
             </Button>
           ) : null}
 
-          {mine && project.status === "Selected" && project.winnerProposalId === proposal.id && project.winnerCompany === null ? (
+          {mine &&
+          project.status === 'Selected' &&
+          project.winnerProposalId === proposal.id &&
+          project.winnerCompany === null ? (
             <span className="inline-flex items-center gap-1 text-[12px] text-warning">
               <AlertIcon size={13} /> Reveal to proceed
             </span>

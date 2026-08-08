@@ -1,30 +1,3 @@
-import {
-  deployContract,
-  findDeployedContract,
-} from "@midnight-ntwrk/midnight-js-contracts";
-import { map } from "rxjs";
-import type { Observable } from "rxjs";
-import {
-  GovFundPrivateStateId,
-  ledger,
-  addMember,
-  removeMember,
-  setQuorumPercent,
-  setApprovalsRequired,
-  createProject,
-  submitProposal,
-  vote,
-  finalizeSelection,
-  revealCompany,
-  fundProject,
-  withdrawCollateral,
-  requestPayment,
-  approveStage,
-  rejectStage,
-  voteTerminate,
-  cancelProject,
-  expireFunding,
-} from "@govfund/api";
 import type {
   GovFundDeployedContract,
   GovFundProviders,
@@ -32,10 +5,30 @@ import type {
   ShieldedCoinInfo,
   Stage,
   ZswapCoinPublicKey,
-} from "@govfund/api";
-import { govfundCompiledContract } from "./compiled.js";
-import { toPrivateState } from "./identities.js";
-import type { RoleIdentity } from "./identities.js";
+} from '@govfund/api';
+import {
+  addMember,
+  approveStage,
+  createProject,
+  fundProject,
+  GovFundPrivateStateId,
+  ledger,
+  rejectStage,
+  removeMember,
+  requestPayment,
+  revealCompany,
+  settleProject,
+  submitProposal,
+  vote,
+  voteTerminate,
+  withdrawCollateral,
+} from '@govfund/api';
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { Observable } from 'rxjs';
+import { map } from 'rxjs';
+import { govfundCompiledContract } from './compiled.js';
+import type { RoleIdentity } from './identities.js';
+import { toPrivateState } from './identities.js';
 
 export type GovFundClientOptions = {
   readonly providers: GovFundProviders;
@@ -71,10 +64,7 @@ export class GovFundClient {
     });
   }
 
-  async find(
-    contractAddress: string,
-    identity?: RoleIdentity,
-  ): Promise<GovFundDeployedContract> {
+  async find(contractAddress: string, identity?: RoleIdentity): Promise<GovFundDeployedContract> {
     const base = {
       compiledContract: govfundCompiledContract,
       contractAddress,
@@ -91,7 +81,7 @@ export class GovFundClient {
   /** Live on-chain ledger stream for the contract at `address`. */
   ledger$(address: string): Observable<Ledger> {
     return this.providers.publicDataProvider
-      .contractStateObservable(address, { type: "latest" })
+      .contractStateObservable(address, { type: 'latest' })
       .pipe(map((state) => ledger(state.data)));
   }
 
@@ -105,14 +95,6 @@ export class GovFundClient {
     return removeMember(d)(commit);
   }
 
-  setQuorumPercent(d: GovFundDeployedContract, percent: bigint) {
-    return setQuorumPercent(d)(percent);
-  }
-
-  setApprovalsRequired(d: GovFundDeployedContract, required: bigint) {
-    return setApprovalsRequired(d)(required);
-  }
-
   // ------------------------------ Project ----------------------------------
 
   createProject(
@@ -120,17 +102,14 @@ export class GovFundClient {
     args: {
       readonly projectId: Uint8Array;
       readonly title: string;
-      readonly deadline: bigint;
-      readonly fundingDeadline: bigint;
       readonly collateralRequired: bigint;
       readonly maxStageRejections: bigint;
     },
   ) {
-    return createProject(d)(
+    return createProject(
+      d,
       args.projectId,
       args.title,
-      args.deadline,
-      args.fundingDeadline,
       args.collateralRequired,
       args.maxStageRejections,
     );
@@ -163,8 +142,8 @@ export class GovFundClient {
     return vote(d)(projectId, proposalId);
   }
 
-  finalizeSelection(d: GovFundDeployedContract, projectId: Uint8Array) {
-    return finalizeSelection(d)(projectId);
+  settleProject(d: GovFundDeployedContract, projectId: Uint8Array) {
+    return settleProject(d)(projectId);
   }
 
   revealCompany(
@@ -176,19 +155,10 @@ export class GovFundClient {
       readonly coinPk: ZswapCoinPublicKey;
     },
   ) {
-    return revealCompany(d)(
-      args.projectId,
-      args.proposalId,
-      args.nonce,
-      args.coinPk,
-    );
+    return revealCompany(d)(args.projectId, args.proposalId, args.nonce, args.coinPk);
   }
 
-  fundProject(
-    d: GovFundDeployedContract,
-    projectId: Uint8Array,
-    depositCoin: ShieldedCoinInfo,
-  ) {
+  fundProject(d: GovFundDeployedContract, projectId: Uint8Array, depositCoin: ShieldedCoinInfo) {
     return fundProject(d)(projectId, depositCoin);
   }
 
@@ -201,12 +171,7 @@ export class GovFundClient {
       readonly coinPk: ZswapCoinPublicKey;
     },
   ) {
-    return withdrawCollateral(d)(
-      args.projectId,
-      args.proposalId,
-      args.nonce,
-      args.coinPk,
-    );
+    return withdrawCollateral(d)(args.projectId, args.proposalId, args.nonce, args.coinPk);
   }
 
   // ------------------------------ Vesting ----------------------------------
@@ -225,13 +190,5 @@ export class GovFundClient {
 
   voteTerminate(d: GovFundDeployedContract, projectId: Uint8Array) {
     return voteTerminate(d)(projectId);
-  }
-
-  cancelProject(d: GovFundDeployedContract, projectId: Uint8Array) {
-    return cancelProject(d)(projectId);
-  }
-
-  expireFunding(d: GovFundDeployedContract, projectId: Uint8Array) {
-    return expireFunding(d)(projectId);
   }
 }

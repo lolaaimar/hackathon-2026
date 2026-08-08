@@ -1,5 +1,5 @@
 export function fmtAmount(n: number): string {
-  return new Intl.NumberFormat("en-US").format(n);
+  return new Intl.NumberFormat('en-US').format(n);
 }
 
 export function fmtNight(n: number): string {
@@ -7,8 +7,8 @@ export function fmtNight(n: number): string {
 }
 
 export function fmtCompact(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
     maximumFractionDigits: 1,
   }).format(n);
 }

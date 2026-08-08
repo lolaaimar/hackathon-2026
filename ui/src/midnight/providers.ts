@@ -1,23 +1,23 @@
-import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
-import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
-import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
-import { dappConnectorProofProvider } from "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider";
-import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-utils";
-import { Transaction } from "@midnight-ntwrk/ledger-v8";
-import { CostModel } from "@midnight-ntwrk/midnight-js-protocol/ledger";
+import type {
+  GovFundCircuits,
+  GovFundPrivateState,
+  GovFundPrivateStateId,
+  GovFundProviders,
+} from '@govfund/api';
+import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
+import { Transaction } from '@midnight-ntwrk/ledger-v8';
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   MidnightProvider,
   PrivateStateProvider,
   WalletProvider,
-} from "@midnight-ntwrk/midnight-js-types";
-import type {
-  GovFundCircuits,
-  GovFundPrivateState,
-  GovFundProviders,
-} from "@govfund/api";
-import { GovFundPrivateStateId } from "@govfund/api";
-import { ZK_ASSETS_BASE } from "./compiled.js";
+} from '@midnight-ntwrk/midnight-js-types';
+import { fromHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { ZK_ASSETS_BASE } from './compiled.js';
 
 /**
  * A session-scoped private state provider. GovFund's private state (the current
@@ -53,16 +53,16 @@ export function inMemoryPrivateStateProvider(): PrivateStateProvider<
       signingKeys.clear();
     },
     exportPrivateStates: async () => {
-      throw new Error("export not supported by in-memory provider");
+      throw new Error('export not supported by in-memory provider');
     },
     importPrivateStates: async () => {
-      throw new Error("import not supported by in-memory provider");
+      throw new Error('import not supported by in-memory provider');
     },
     exportSigningKeys: async () => {
-      throw new Error("export not supported by in-memory provider");
+      throw new Error('export not supported by in-memory provider');
     },
     importSigningKeys: async () => {
-      throw new Error("import not supported by in-memory provider");
+      throw new Error('import not supported by in-memory provider');
     },
   };
 }
@@ -72,16 +72,11 @@ export function inMemoryPrivateStateProvider(): PrivateStateProvider<
  * Connector wallet, using the wallet's own endpoints (`getConfiguration`) so the
  * app always talks to the network the user selected in their wallet.
  */
-export async function createGovFundProviders(
-  api: ConnectedAPI,
-): Promise<GovFundProviders> {
+export async function createGovFundProviders(api: ConnectedAPI): Promise<GovFundProviders> {
   const config = await api.getConfiguration();
   setNetworkId(config.networkId);
 
-  const publicDataProvider = indexerPublicDataProvider(
-    config.indexerUri,
-    config.indexerWsUri,
-  );
+  const publicDataProvider = indexerPublicDataProvider(config.indexerUri, config.indexerWsUri);
 
   const zkConfigProvider = new FetchZkConfigProvider<GovFundCircuits>(
     `${window.location.origin}/${ZK_ASSETS_BASE}`,
@@ -95,23 +90,14 @@ export async function createGovFundProviders(
     CostModel.initialCostModel(),
   );
 
-  const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } =
-    await api.getShieldedAddresses();
+  const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } = await api.getShieldedAddresses();
 
   const walletProvider: WalletProvider = {
     getCoinPublicKey: () => shieldedCoinPublicKey,
     getEncryptionPublicKey: () => shieldedEncryptionPublicKey,
     balanceTx: async (tx) => {
-      const { tx: balancedHex } = await api.balanceUnsealedTransaction(
-        toHex(tx.serialize()),
-        {},
-      );
-      return Transaction.deserialize(
-        "signature",
-        "proof",
-        "binding",
-        fromHex(balancedHex),
-      );
+      const { tx: balancedHex } = await api.balanceUnsealedTransaction(toHex(tx.serialize()), {});
+      return Transaction.deserialize('signature', 'proof', 'binding', fromHex(balancedHex));
     },
   };
 

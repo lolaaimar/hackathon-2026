@@ -1,12 +1,12 @@
+import type { GovFundPrivateState, ZswapCoinPublicKey } from '@govfund/api';
 import {
   createAdminState,
   createCompanyState,
   createMemberState,
   memberCommit,
-} from "@govfund/api";
-import type { GovFundPrivateState, ZswapCoinPublicKey } from "@govfund/api";
+} from '@govfund/api';
 
-const IDENTITY_KEY = "govfund.identities.v1";
+const IDENTITY_KEY = 'govfund.identities.v1';
 
 export type RoleIdentity = {
   readonly sk: Uint8Array;
@@ -19,14 +19,13 @@ type Stored = Record<string, string>;
 
 const bytesToHex = (b: Uint8Array): string =>
   Array.from(b)
-    .map((x) => x.toString(16).padStart(2, "0"))
-    .join("");
+    .map((x) => x.toString(16).padStart(2, '0'))
+    .join('');
 
 const hexToBytes = (hex: string): Uint8Array =>
-  new Uint8Array((hex.match(/.{2}/g) ?? []).map((h) => parseInt(h, 16)));
+  new Uint8Array((hex.match(/.{2}/g) ?? []).map((h) => Number.parseInt(h, 16)));
 
-const randomBytes = (n: number): Uint8Array =>
-  crypto.getRandomValues(new Uint8Array(n));
+const randomBytes = (n: number): Uint8Array => crypto.getRandomValues(new Uint8Array(n));
 
 function loadStored(): Stored {
   try {
@@ -51,7 +50,7 @@ function saveStored(stored: Stored): void {
  * fees and proving.
  */
 export function getRoleIdentity(
-  role: "admin" | "member" | "company",
+  role: 'admin' | 'member' | 'company',
   contract?: string,
 ): RoleIdentity {
   const stored = loadStored();
@@ -64,16 +63,14 @@ export function getRoleIdentity(
       sk: hexToBytes(parsed.sk),
       salt: parsed.salt ? hexToBytes(parsed.salt) : undefined,
       nonce: parsed.nonce ? hexToBytes(parsed.nonce) : undefined,
-      coinPk: parsed.coinPk
-        ? { bytes: hexToBytes(parsed.coinPk) }
-        : undefined,
+      coinPk: parsed.coinPk ? { bytes: hexToBytes(parsed.coinPk) } : undefined,
     };
   }
 
   let identity: RoleIdentity;
-  if (role === "member") {
+  if (role === 'member') {
     identity = { sk: randomBytes(32), salt: randomBytes(32) };
-  } else if (role === "company") {
+  } else if (role === 'company') {
     identity = {
       sk: randomBytes(32),
       nonce: randomBytes(32),
@@ -101,9 +98,7 @@ export const memberCommitOf = (identity: RoleIdentity): Uint8Array =>
 export const companyCommitOf = (identity: RoleIdentity): Uint8Array =>
   memberCommit(identity.sk!, identity.nonce!);
 
-export const toPrivateState = (
-  identity: RoleIdentity,
-): GovFundPrivateState => {
+export const toPrivateState = (identity: RoleIdentity): GovFundPrivateState => {
   if (identity.salt !== undefined) {
     return createMemberState(identity.sk!, identity.salt);
   }

@@ -1,7 +1,7 @@
 export function Progress({
   value,
   max,
-  color = "var(--color-primary-600)",
+  color = 'var(--color-primary-600)',
   height = 8,
   showLabel,
 }: {

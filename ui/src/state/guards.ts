@@ -1,4 +1,4 @@
-import type { AppState, Member, ProjectInfo, Proposal } from "../types";
+import type { AppState, Member, ProjectInfo, Proposal } from '../types';
 
 export function memberCount(state: AppState): number {
   return state.config.members.length;
@@ -13,15 +13,13 @@ export function isDeployer(state: AppState): boolean {
   if (state.wallet.connected) {
     return state.wallet.address === state.contract.deployerAddress;
   }
-  return state.role === "admin";
+  return state.role === 'admin';
 }
 
 export function memberByAddress(state: AppState, address: string | null): Member | null {
   if (!address) return null;
   return (
-    state.config.members.find(
-      (m) => m.address.toLowerCase() === address.toLowerCase()
-    ) ?? null
+    state.config.members.find((m) => m.address.toLowerCase() === address.toLowerCase()) ?? null
   );
 }
 
@@ -52,86 +50,48 @@ export function winnerStages(p: ProjectInfo) {
   return winnerProposal(p)?.stages ?? [];
 }
 
-export function canVote(p: ProjectInfo, state: AppState): boolean {
-  return (
-    p.status === "Voting" &&
-    state.now < p.deadline &&
-    p.voted === null &&
-    p.proposals.length > 0
-  );
+export function canVote(p: ProjectInfo): boolean {
+  return p.status === 'Voting' && p.voted === null && p.proposals.length > 0;
 }
 
-export function canSubmitProposal(p: ProjectInfo, state: AppState): boolean {
-  return p.status === "Voting" && state.now < p.deadline;
+export function canSubmitProposal(p: ProjectInfo): boolean {
+  return p.status === 'Voting';
 }
 
 export function canFinalize(p: ProjectInfo, state: AppState): boolean {
-  return (
-    p.status === "Voting" &&
-    state.now >= p.deadline &&
-    quorumMet(state, p.totalVotes) &&
-    p.leader !== null
-  );
-}
-
-export function canCancel(p: ProjectInfo, state: AppState): boolean {
-  return (
-    p.status === "Voting" &&
-    state.now >= p.deadline &&
-    !quorumMet(state, p.totalVotes)
-  );
+  return p.status === 'Voting' && quorumMet(state, p.totalVotes) && p.leader !== null;
 }
 
 export function canReveal(p: ProjectInfo): boolean {
-  return p.status === "Selected" && p.winnerCompany === null;
+  return p.status === 'Selected' && p.winnerCompany === null;
 }
 
-export function canFund(p: ProjectInfo, state: AppState): boolean {
-  return (
-    p.status === "Selected" &&
-    p.winnerCompany !== null &&
-    state.now < p.fundingDeadline
-  );
-}
-
-export function canExpire(p: ProjectInfo, state: AppState): boolean {
-  return p.status === "Selected" && state.now >= p.fundingDeadline;
+export function canFund(p: ProjectInfo): boolean {
+  return p.status === 'Selected' && p.winnerCompany !== null;
 }
 
 export function canRequestPayment(p: ProjectInfo): boolean {
-  if (p.status !== "InProgress" || p.stagePending) return false;
+  if (p.status !== 'InProgress' || p.stagePending) return false;
   if (p.stageRejections >= p.maxStageRejections) return false;
   return p.currentStage < winnerStages(p).length;
 }
 
 export function canReviewStage(p: ProjectInfo): boolean {
-  return (
-    p.status === "InProgress" &&
-    p.stagePending &&
-    p.reviewedAttempt !== p.stageAttempt
-  );
+  return p.status === 'InProgress' && p.stagePending && p.reviewedAttempt !== p.stageAttempt;
 }
 
 export function canTerminate(p: ProjectInfo): boolean {
-  return (
-    (p.status === "Selected" || p.status === "InProgress") &&
-    !p.terminateVoted
-  );
+  return (p.status === 'Selected' || p.status === 'InProgress') && !p.terminateVoted;
 }
 
-export function canWithdraw(
-  p: ProjectInfo,
-  proposal: Proposal
-): boolean {
+export function canWithdraw(p: ProjectInfo, proposal: Proposal): boolean {
   if (proposal.withdrawn || proposal.collateral <= 0) return false;
   const postVote =
-    p.status === "Selected" ||
-    p.status === "InProgress" ||
-    p.status === "Completed" ||
-    p.status === "Cancelled" ||
-    p.status === "Terminated";
-  const winnerHeld =
-    p.winnerProposalId === proposal.id && p.status !== "Cancelled";
+    p.status === 'Selected' ||
+    p.status === 'InProgress' ||
+    p.status === 'Completed' ||
+    p.status === 'Terminated';
+  const winnerHeld = p.winnerProposalId === proposal.id;
   return postVote && !winnerHeld;
 }
 

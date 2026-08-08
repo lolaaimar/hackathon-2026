@@ -1,18 +1,11 @@
-import type { ProjectInfo } from "../types";
-import { STATUS_META } from "../types";
-import { StatusBadge } from "./StatusBadge";
-import { LifecycleTimeline } from "./LifecycleTimeline";
-import { Stat } from "./ui/Card";
-import { fmtNight } from "../lib/format";
-import { fmtDateTime } from "../lib/time";
+import { fmtNight } from '../lib/format';
+import type { ProjectInfo } from '../types';
+import { STATUS_META } from '../types';
+import { LifecycleTimeline } from './LifecycleTimeline';
+import { StatusBadge } from './StatusBadge';
+import { Stat } from './ui/Card';
 
 export function ProjectHeader({ p }: { p: ProjectInfo }) {
-  const deadlineLabel =
-    p.status === "Voting"
-      ? { label: "Voting closes", at: p.deadline }
-      : p.status === "Selected"
-        ? { label: "Funding deadline", at: p.fundingDeadline }
-        : null;
   const meta = STATUS_META[p.status];
 
   return (
@@ -37,8 +30,8 @@ export function ProjectHeader({ p }: { p: ProjectInfo }) {
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
           label="Budget"
-          value={p.budget > 0 ? fmtNight(p.budget) : "—"}
-          hint={p.budget === 0 && p.status === "Selected" ? "deposit after reveal" : undefined}
+          value={p.budget > 0 ? fmtNight(p.budget) : '—'}
+          hint={p.budget === 0 && p.status === 'Selected' ? 'deposit after reveal' : undefined}
         />
         <Stat
           label="Collateral required"
@@ -46,24 +39,25 @@ export function ProjectHeader({ p }: { p: ProjectInfo }) {
           hint="per proposal"
         />
         <Stat
-          label={p.status === "Completed" ? "Disbursed" : "Disbursed"}
+          label={p.status === 'Completed' ? 'Disbursed' : 'Disbursed'}
           value={fmtNight(p.disbursed)}
           hint={
-            p.budget > 0 && p.status !== "Completed"
+            p.budget > 0 && p.status !== 'Completed'
               ? `${Math.round((p.disbursed / p.budget) * 100)}% of budget`
               : undefined
           }
         />
-        {deadlineLabel ? (
-          <Stat label={deadlineLabel.label} value={fmtDateTime(deadlineLabel.at)} />
+        {p.status === 'Selected' ? (
+          <Stat
+            label="Winner"
+            value={p.winnerCompany ? 'Revealed' : 'Committed'}
+            hint={p.winnerCompany ? undefined : 'identity hidden until reveal'}
+          />
         ) : (
           <Stat
             label="Status"
             value={
-              <span
-                className="inline-flex items-center gap-1.5"
-                style={{ color: meta.color }}
-              >
+              <span className="inline-flex items-center gap-1.5" style={{ color: meta.color }}>
                 {p.status}
               </span>
             }

@@ -1,16 +1,21 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
 
 const controlBase =
-  "w-full h-9 rounded-lg border border-line bg-white px-3 text-sm text-body placeholder:text-muted/80 " +
-  "transition-colors duration-150 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-100 " +
-  "disabled:cursor-not-allowed disabled:bg-panel";
+  'w-full h-9 rounded-lg border border-line bg-white px-3 text-sm text-body placeholder:text-muted/80 ' +
+  'transition-colors duration-150 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-100 ' +
+  'disabled:cursor-not-allowed disabled:bg-panel';
 
 export function Field({
   label,
   hint,
   error,
   children,
-  className = "",
+  className = '',
 }: {
   label: string;
   hint?: ReactNode;
@@ -19,6 +24,7 @@ export function Field({
   className?: string;
 }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: label wraps the control passed as children
     <label className={`block ${className}`}>
       <span className="mb-1.5 block text-[13px] font-medium text-body">{label}</span>
       {children}
@@ -32,13 +38,18 @@ export function Field({
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${controlBase} ${props.className ?? ""}`} />;
+  return <input {...props} className={`${controlBase} ${props.className ?? ''}`} />;
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`${controlBase} h-auto min-h-20 py-2 ${props.className ?? ""}`} />;
+  return (
+    <textarea
+      {...props}
+      className={`${controlBase} h-auto min-h-20 py-2 ${props.className ?? ''}`}
+    />
+  );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${controlBase} ${props.className ?? ""}`} />;
+  return <select {...props} className={`${controlBase} ${props.className ?? ''}`} />;
 }

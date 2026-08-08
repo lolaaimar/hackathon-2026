@@ -1,22 +1,22 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../state/provider";
-import { getSelectedNetwork, SUPPORTED_NETWORKS } from "../wallet/selectWallet";
-import { memberByAddress } from "../state/guards";
-import { Button } from "../components/ui/Button";
-import { Card, CardHeader } from "../components/ui/Card";
-import { EmptyState } from "../components/ui/EmptyState";
-import { Field, Input } from "../components/ui/Field";
-import { AlertIcon, CheckIcon, CubeIcon, SearchIcon } from "../components/ui/icons";
-import { fmtNight } from "../lib/format";
-import { fmtDate } from "../lib/time";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { Card, CardHeader } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Field, Input } from '../components/ui/Field';
+import { AlertIcon, CheckIcon, CubeIcon, SearchIcon } from '../components/ui/icons';
+import { fmtNight } from '../lib/format';
+import { fmtDate } from '../lib/time';
+import { memberByAddress } from '../state/guards';
+import { useGovFund } from '../state/provider';
+import { getSelectedNetwork, SUPPORTED_NETWORKS } from '../wallet/selectWallet';
 
 export function ContractPage() {
   const { state } = useGovFund();
   const navigate = useNavigate();
   const { contract, config } = state;
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [searched, setSearched] = useState<string | null>(null);
 
   if (!contract.deployed) {
@@ -43,16 +43,16 @@ export function ContractPage() {
     contract.networkId ??
     getSelectedNetwork();
 
-  const resolvedAddress = contract.address ?? "";
+  const resolvedAddress = contract.address ?? '';
   const hasSearched = searched !== null;
-  const submitted = hasSearched ? (searched ?? "") : query.trim();
+  const submitted = hasSearched ? (searched ?? '') : query.trim();
   const found = !hasSearched || submitted === resolvedAddress;
   const me = memberByAddress(state, state.wallet.address);
 
   const enter = () => {
-    if (state.role === "company") navigate("/company");
-    else if (state.role === "member") navigate("/member");
-    else navigate("/admin");
+    if (state.role === 'company') navigate('/company');
+    else if (state.role === 'member') navigate('/member');
+    else navigate('/admin');
   };
 
   return (
@@ -60,8 +60,8 @@ export function ContractPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Enter a contract</h1>
         <p className="mt-1 text-sm text-muted">
-          Find the deployed GovFund contract by its address on {networkLabel}, then open
-          it to interact.
+          Find the deployed GovFund contract by its address on {networkLabel}, then open it to
+          interact.
         </p>
       </div>
 
@@ -89,8 +89,8 @@ export function ContractPage() {
           </div>
         </form>
         <p className="mt-2 text-[12px] text-muted">
-          The demo contract lives at <span className="font-mono">{resolvedAddress}</span>.
-          Enter that address and hit Find to locate it.
+          The demo contract lives at <span className="font-mono">{resolvedAddress}</span>. Enter
+          that address and hit Find to locate it.
         </p>
       </Card>
 
@@ -101,11 +101,9 @@ export function ContractPage() {
             <div>
               <p className="text-sm font-semibold text-ink">Contract not found</p>
               <p className="mt-0.5 text-[13px] text-muted">
-                No GovFund contract at{" "}
-                <span className="font-mono text-[12px] text-body">
-                  {submitted || "…"}
-                </span>{" "}
-                on {networkLabel}. Check the address and try again.
+                No GovFund contract at{' '}
+                <span className="font-mono text-[12px] text-body">{submitted || '…'}</span> on{' '}
+                {networkLabel}. Check the address and try again.
               </p>
             </div>
           </div>
@@ -140,32 +138,24 @@ export function ContractPage() {
             <div>
               <dt className="text-muted">Deployer</dt>
               <dd className="mt-0.5 break-all font-mono text-[12px] text-body">
-                {contract.deployerAddress ?? "—"}
+                {contract.deployerAddress ?? '—'}
               </dd>
             </div>
             <div>
               <dt className="text-muted">Registered members</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {config.members.length}
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{config.members.length}</dd>
             </div>
             <div>
               <dt className="text-muted">Quorum</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {config.quorumPercent}%
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{config.quorumPercent}%</dd>
             </div>
             <div>
               <dt className="text-muted">Approvals / stage</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {config.approvalsRequired}
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{config.approvalsRequired}</dd>
             </div>
             <div>
               <dt className="text-muted">Treasury pot</dt>
-              <dd className="mt-0.5 tabular font-medium text-ink">
-                {fmtNight(config.pot)}
-              </dd>
+              <dd className="mt-0.5 tabular font-medium text-ink">{fmtNight(config.pot)}</dd>
             </div>
           </dl>
 

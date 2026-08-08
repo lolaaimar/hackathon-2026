@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../../state/provider";
-import { ProjectHeader } from "../../components/ProjectHeader";
-import { ProposalList } from "../../components/ProposalList";
-import { StagePanel } from "../../components/StagePanel";
-import { SubmitProposalForm } from "../../components/SubmitProposalForm";
-import { Button } from "../../components/ui/Button";
-import { Card, CardHeader } from "../../components/ui/Card";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { ArrowLeftIcon, BuildingIcon, LockIcon } from "../../components/ui/icons";
-import { canSubmitProposal, canWithdraw, isWinner, mineOf } from "../../state/guards";
-import { fmtNight } from "../../lib/format";
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ProjectHeader } from '../../components/ProjectHeader';
+import { ProposalList } from '../../components/ProposalList';
+import { StagePanel } from '../../components/StagePanel';
+import { SubmitProposalForm } from '../../components/SubmitProposalForm';
+import { Button } from '../../components/ui/Button';
+import { Card, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ArrowLeftIcon, BuildingIcon, LockIcon } from '../../components/ui/icons';
+import { fmtNight } from '../../lib/format';
+import { canSubmitProposal, canWithdraw, isWinner, mineOf } from '../../state/guards';
+import { useGovFund } from '../../state/provider';
 
 export function CompanyProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +26,7 @@ export function CompanyProjectDetail() {
           icon={<BuildingIcon size={26} />}
           title="Project not found"
           action={
-            <Button variant="secondary" onClick={() => navigate("/company")}>
+            <Button variant="secondary" onClick={() => navigate('/company')}>
               Back to portal
             </Button>
           }
@@ -37,9 +37,9 @@ export function CompanyProjectDetail() {
 
   const myProposal = project.proposals.find((pr) => mineOf(state, pr));
   const winner = project.proposals.find((pr) => isWinner(project, pr));
-  const submitOpen = canSubmitProposal(project, state) && !myProposal;
+  const submitOpen = canSubmitProposal(project) && !myProposal;
   const canReveal =
-    project.status === "Selected" &&
+    project.status === 'Selected' &&
     winner !== undefined &&
     mineOf(state, winner) &&
     !project.winnerCompany &&
@@ -48,13 +48,13 @@ export function CompanyProjectDetail() {
   const withdraw = (proposalId: string) => {
     const pr = project.proposals.find((p) => p.id === proposalId);
     if (!pr) return;
-    dispatch({ type: "WITHDRAW_COLLATERAL", projectId: project.id, proposalId });
-    toast(`Collateral of ${fmtNight(pr.collateral)} returned to your wallet.`, "success");
+    dispatch({ type: 'WITHDRAW_COLLATERAL', projectId: project.id, proposalId });
+    toast(`Collateral of ${fmtNight(pr.collateral)} returned to your wallet.`, 'success');
   };
 
   const reveal = () => {
-    dispatch({ type: "REVEAL_COMPANY", projectId: project.id });
-    toast("Identity revealed — the contract now knows the winner.", "success");
+    dispatch({ type: 'REVEAL_COMPANY', projectId: project.id });
+    toast('Identity revealed — the contract now knows the winner.', 'success');
   };
 
   return (
@@ -105,9 +105,9 @@ export function CompanyProjectDetail() {
             <CardHeader
               title="Proposals"
               subtitle={
-                project.status === "Voting"
-                  ? "Vote counts are public; who voted is hidden."
-                  : "Final bid list"
+                project.status === 'Voting'
+                  ? 'Vote counts are public; who voted is hidden.'
+                  : 'Final bid list'
               }
             />
             <ProposalList project={project} onWithdraw={withdraw} />
@@ -115,7 +115,7 @@ export function CompanyProjectDetail() {
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          <StagePanel project={project} role="company" />
+          <StagePanel project={project} viewer="company" />
           <MyBidStatus project={project} />
         </div>
       </div>
@@ -123,7 +123,11 @@ export function CompanyProjectDetail() {
   );
 }
 
-function MyBidStatus({ project }: { project: ReturnType<typeof useGovFund>["state"]["projects"][number] }) {
+function MyBidStatus({
+  project,
+}: {
+  project: ReturnType<typeof useGovFund>['state']['projects'][number];
+}) {
   const { state } = useGovFund();
   const mine = project.proposals.filter((pr) => mineOf(state, pr));
   if (mine.length === 0) {
@@ -132,7 +136,7 @@ function MyBidStatus({ project }: { project: ReturnType<typeof useGovFund>["stat
         <CardHeader title="Your position" />
         <p className="text-[13px] text-muted">
           You haven't bid on this project yet.
-          {project.status === "Voting" ? " Bids stay open until the voting deadline." : ""}
+          {project.status === 'Voting' ? ' Bids stay open until the winner is settled.' : ''}
         </p>
       </Card>
     );
@@ -146,22 +150,24 @@ function MyBidStatus({ project }: { project: ReturnType<typeof useGovFund>["stat
           return (
             <li key={pr.id} className="flex items-center justify-between text-[13px]">
               <span className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${pr.withdrawn ? "bg-cancelled" : isW ? "bg-selected" : "bg-progress"}`} />
+                <span
+                  className={`h-2 w-2 rounded-full ${pr.withdrawn ? 'bg-cancelled' : isW ? 'bg-selected' : 'bg-progress'}`}
+                />
                 <span className="font-medium text-ink">{pr.id}</span>
                 <span className="text-muted">{pr.voteCount} votes</span>
               </span>
               <span className="tabular text-muted">
                 {pr.withdrawn
-                  ? "collateral withdrawn"
-                  : project.status === "Voting"
+                  ? 'collateral withdrawn'
+                  : project.status === 'Voting'
                     ? `collateral held · ${fmtNight(pr.collateral)}`
                     : isW
                       ? pr.revealed || project.winnerCompany
-                        ? "winner — revealed"
-                        : "winner — reveal pending"
+                        ? 'winner — revealed'
+                        : 'winner — reveal pending'
                       : canWithdraw(project, pr)
-                        ? "not selected — withdraw"
-                        : "not selected"}
+                        ? 'not selected — withdraw'
+                        : 'not selected'}
               </span>
             </li>
           );

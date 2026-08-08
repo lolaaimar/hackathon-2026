@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { useGovFund } from "../../state/provider";
+import { useState } from 'react';
+import { useGovFund } from '../../state/provider';
 import {
   getSelectedNetwork,
-  setSelectedNetwork,
-  SUPPORTED_NETWORKS,
   type NetworkId,
-} from "../../wallet/selectWallet";
+  SUPPORTED_NETWORKS,
+  setSelectedNetwork,
+} from '../../wallet/selectWallet';
 
 export function NetworkPicker({
-  className = "",
-  label = "Network",
+  className = '',
+  label = 'Network',
 }: {
   className?: string;
   label?: string;
@@ -21,10 +21,10 @@ export function NetworkPicker({
     setSelectedNetwork(id);
     setNetwork(id);
     if (state.wallet.connected) {
-      dispatch({ type: "WALLET_DISCONNECTED" });
+      dispatch({ type: 'WALLET_DISCONNECTED' });
       toast(
         `Wallet disconnected. Reconnect on the ${SUPPORTED_NETWORKS.find((n) => n.id === id)?.label} network.`,
-        "info"
+        'info',
       );
     }
   };
