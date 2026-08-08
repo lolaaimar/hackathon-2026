@@ -4,11 +4,12 @@ This document is a guide to the **GovFund** web frontend. It explains how to
 launch the app, what you are looking at, and a complete narrated walkthrough
 of every feature.
 
-> The frontend is a **browser demo** of the GovFund Midnight (Compact)
-> contract. It simulates the contract's on-chain behavior locally so the full
-> lifecycle can be demonstrated without a wallet, a devnet, or real funds.
-> The actual contract and its logic live in `contract/` (see the root
-> `README.md` and `design.md` for that side).
+> The frontend is a **browser DApp** for the GovFund Midnight (Compact)
+> contract. It connects to a Midnight network through a DApp Connector wallet:
+> deploying the contract and every action submits a real transaction. The
+> top-bar role switcher lets you demo all three roles from one session.
+> The contract and its logic live in `contract/` (see the root `README.md`
+> and `design.md` for that side).
 
 ---
 
@@ -22,7 +23,7 @@ of every feature.
 6. [Screen-by-screen reference](#6-screen-by-screen-reference)
 7. [Project lifecycle states](#7-project-lifecycle-states)
 8. [Glossary](#8-glossary)
-9. [The demo clock](#9-the-demo-clock)
+9. [Deadlines](#9-deadlines)
 10. [Connecting a real Midnight wallet](#10-connecting-a-real-midnight-wallet)
 11. [Config panel (network)](#11-config-panel-network)
 12. [State persistence & resetting the demo](#12-state-persistence--resetting-the-demo)
@@ -35,22 +36,23 @@ of every feature.
 
 The fastest way to see the whole product:
 
-1. **Deploy** the contract — set **Approvals / stage = 1** so a single
-   reviewer can approve stages, then hit *Deploy contract*.
+1. **Connect a Midnight wallet** and **Deploy** the contract — set
+   **Approvals / stage = 1** so a single reviewer can approve stages, then hit
+   *Deploy contract*.
 2. Switch to the **Member** role (top bar), click **New project**, and open a
-   project with a short voting window (e.g. **7 days**).
+   project.
 3. Switch to **Company**, click **Bid**, and submit a proposal with a budget
    and a stage schedule (stages must sum to the budget).
 4. Back on **Member**, open the project and click a proposal's **vote** button
-   (one vote per project — that's the nullifier). Fast-forward with the demo
-   clock, then hit **Finalize selection**.
+   (one vote per project — that's the nullifier). Once quorum is met, hit
+   **Finalize selection**.
 5. As **Company**, open the project and **Reveal company**.
 6. As **Member**, **Fund project**.
 7. As **Company**, **Request payment** for stage 1. As **Member**, **Approve**
    each stage until the project is **Completed**.
 
-That covers the entire six-state lifecycle in a few minutes. The sections
-below explain every step in detail.
+That covers the full five-state lifecycle. The sections below explain every
+step in detail.
 
 ---
 
@@ -73,12 +75,12 @@ Key properties demonstrated by the frontend:
 - **Collateral** — companies deposit collateral with their bid. Losers get it
   back, the winner gets it back on completion, or it is slashed to the
   treasury if the project is terminated.
-- **Deadlines** — voting closes at a deadline; funding closes at another. If
-  no quorum, the project can be cancelled; if not funded, it expires.
+- **Quorum-based selection** — once enough members vote, the plurality winner
+  is selected; there are no deadlines in this build.
 
-**Important:** in the default demo mode everything runs in your browser,
-simulated. Nothing is broadcast and no real money moves. See
-[§10](#10-connecting-a-real-midnight-wallet) for the optional real-wallet mode.
+**Important:** the app talks to a real Midnight network — deploying the
+contract and every action submits a transaction through your connected wallet.
+See [§10](#10-connecting-a-real-midnight-wallet) for wallet setup.
 
 ---
 
@@ -125,7 +127,7 @@ bar** lets you jump between them at any time (useful for demos).
 
 | Role | Label in UI | What they do |
 | ---- | ----------- | ------------ |
-| **Admin** | `Admin` | Deploys the contract. Manages the government **member registry** (add/remove members) and tunes the **quorum %** and **approvals per stage**. |
+| **Admin** | `Admin` | Deploys the contract (setting **quorum %** and **approvals / stage**, which are fixed at deploy) and manages the government **member registry** (add/remove members). |
 | **Member** | `Member` (Government) | Opens **projects**, casts **anonymous votes** on proposals, **reviews/approves milestone stages**, and votes to **terminate** failing work. |
 | **Company** | `Company` | Submits **budget proposals** with a stage schedule, deposits **collateral**, reveals identity if it wins, requests **stage payments**, and withdraws collateral. |
 
@@ -147,18 +149,16 @@ link) and an **Exit** button to return to the login screen.
 ## 5. Guided walkthrough (full demo)
 
 This is a complete, narrated run-through. It takes about 5 minutes and hits
-every feature. The repo starts with one seeded project ("Metro Line 4 —
-Signaling Upgrade") in the **Voting** state so you can either follow the full
-flow below or jump straight to voting/bidding on the seeded project.
+every feature.
 
 ### Step 0 — Deploy the contract
 
 1. On the **login screen**, click **Admin** (or any role).
 2. You land on **Deploy the GovFund contract**.
 3. Set these values (they keep every threshold reachable by the single
-   simulated member):
+   member):
    - **Funding token**: `NIGHT` (fixed).
-   - **Quorum (%)**: the percentage of members that must vote — `60` by
+   - **Quorum (%)**: the percentage of members that must vote — `50` by
      default. With just the deployer as a member, one vote already meets it
      (1 of 1). If you add members, quorum needs `members × % ÷ 100` votes,
      which a single vote can never satisfy — so keep the registry to one
@@ -167,7 +167,7 @@ flow below or jump straight to voting/bidding on the seeded project.
      **`1`** so the single reviewer can approve stages. With more members you
      could raise it, but then each stage would need that many distinct reviews,
      which a single member can't provide.
-4. Read the note: the address shown (a simulated demo address) becomes the
+4. Read the note: the connected wallet address shown becomes the
    **deployer = Admin**, the first member of the registry.
 5. Click **Deploy contract**.
 
@@ -206,16 +206,10 @@ After deployment it holds just the deployer (Admin).
 2. Click **New project** and fill the form:
    - **Title**, e.g. *Street lighting retrofit*.
    - **Description** (optional).
-   - **Voting deadline (days)** — proposals and votes close here (use `7`).
-   - **Funding deadline (days)** — winner must be funded by here (use `14`,
-     must be **after** the voting deadline).
    - **Collateral required (NIGHT)** — what each bidder must deposit (e.g. `10000`).
    - **Max stage rejections** — how many times a stage can be rejected before
      it is blocked (e.g. `2`).
 3. Click **Open project**. It appears in the desk with status **Voting**.
-
-> Use the **demo clock** (bottom-right, see [§9](#9-the-demo-clock)) to skip
-> time and reach deadlines instantly during the demo.
 
 ### Step 3 — Company: bid with a budget + stage schedule
 
@@ -234,7 +228,7 @@ After deployment it holds just the deployer (Admin).
    hidden behind a commitment.
 
 Submit bids from several companies: use the **Switch demo identity** card in
-the Company portal to change who you are bidding as (the seeded companies
+the Company portal to change who you are bidding as (the demo companies
 are *VoltGrid Industries*, *Atlas Rail Systems*, *Reyes Construction*,
 *Aeterna Builds*). Each bid deposits its collateral into the treasury pot.
 
@@ -246,8 +240,6 @@ are *VoltGrid Industries*, *Atlas Rail Systems*, *Reyes Construction*,
 3. Under **Proposals**, click **Vote** on a bid. The toast notes the vote is
    recorded as a *fresh nullifier* — you cannot vote twice (the button
    disappears, and the meter is now full).
-4. Fast-forward with the **demo clock** until the voting deadline passes (see
-   [§9](#9-the-demo-clock)).
 
 > **What's being demonstrated:** vote *counts* are public; vote *identities*
 > are hidden. No UI in the app can tell you which member voted for which bid.
@@ -256,8 +248,8 @@ are *VoltGrid Industries*, *Atlas Rail Systems*, *Reyes Construction*,
 
 ### Step 5 — Finalize, reveal, fund
 
-Once the voting deadline passes **and** quorum is met, the plurality leader
-(the bid with the most votes) can be selected:
+Once quorum is met, the plurality leader (the bid with the most votes) can be
+selected:
 
 1. On the **Member** project page, the **Next action** card shows
    **Finalize selection** — click it. The project moves to **Selected** and
@@ -269,10 +261,8 @@ Once the voting deadline passes **and** quorum is met, the plurality leader
    **Fund project** — click it. The project's budget is deposited into the
    contract, and the project moves to **In Progress**.
 
-> If the voting deadline passes **without quorum**, the project can be
-> **cancelled** instead, and all collateral becomes refundable. If the
-> **Selected** project is never funded by its funding deadline, it can be
-> **expired** (also cancelled).
+> There are no deadlines or cancellations in this build: a project without
+> quorum simply stays in **Voting**.
 
 ### Step 6 — Vesting: request payment and approve stages
 
@@ -316,9 +306,9 @@ Watch the **Treasury pot** (Contract page) throughout:
 | `/login` | **Login** | Enter as a demo role (Admin / Member / Company) or connect a real Midnight wallet via DApp Connector. |
 | `/deploy` | **Deploy** | Set quorum % and approvals/stage, then deploy the contract. After deployment: a dashboard with links to the Government desk, Company portal, and Contract page. |
 | `/contract` | **Enter a contract** | Look up the deployed contract by address and view its details: address, network, funding token, treasury, deployer, member count, quorum, approvals, treasury pot. The "Enter contract" button routes you by role. |
-| `/admin` | **Admin console** | Member registry (add/remove members), quorum %, and approvals/stage settings. Remove is blocked if it would make a threshold unreachable. |
+| `/admin` | **Admin console** | Member registry (add/remove members). Quorum % and approvals/stage are fixed at deploy. Remove is blocked if it would make a threshold unreachable. |
 | `/member` | **Government member desk** | Open new projects, filter the project list by status, see active-project/ quorum/approvals stats. |
-| `/member/projects/:id` | **Project detail (member)** | Quorum meter, proposal list (vote here), **Next action** panel (finalize / cancel / fund / expire), stage panel (approve/reject, terminate), vesting summary. |
+| `/member/projects/:id` | **Project detail (member)** | Quorum meter, proposal list (vote here), **Next action** panel (finalize / fund), stage panel (approve/reject, terminate), vesting summary. |
 | `/company` | **Company portal** | Switch demo identity, list of your proposals (with collateral status), open-for-bids list, and all projects. |
 | `/company/projects/:id` | **Project detail (company)** | Reveal-company banner, submit-proposal form, proposal list, stage panel (request payment), your position. |
 
@@ -330,8 +320,7 @@ The **top bar** (present on every page once logged in) contains:
 - **Wallet chip** — connected address or a *Connect* link.
 - **Exit** — logs out.
 
-The **bottom-right** has the **demo clock**. The **bottom-left** has a
-**Config** button (network picker + restart demo).
+The **bottom-left** has a **Config** button (network picker + restart demo).
 
 ---
 
@@ -342,11 +331,10 @@ the top of each project page makes the current position obvious.
 
 | State | Meaning | Who acts next |
 | ----- | ------- | ------------- |
-| **Voting** | Proposals and votes are accepted until the deadline. | Companies bid; members vote. |
+| **Voting** | Proposals and votes are accepted; the project finalizes as soon as quorum is met. | Companies bid; members vote. |
 | **Selected** | Voting closed with quorum; the plurality winner is picked but hidden. | Winner reveals; members fund. |
 | **In Progress** | Budget is deposited; the winner is paid stage-by-stage. | Company requests payment; members review. |
 | **Completed** | All stages approved; collateral returned to the winner. | — |
-| **Cancelled** | Voting quorum missed, or funding never provided. Collateral refundable. | Losers withdraw collateral. |
 | **Terminated** | Voted out; the winner's collateral is slashed to the treasury. | — |
 
 Status badges are color-coded **and** labelled, so status is never conveyed
@@ -364,8 +352,7 @@ by color alone.
 - **Deployer / Admin** — the address that deployed the contract; the only one
   that can add/remove members.
 - **Quorum** — the minimum number of votes required (a % of members) for a
-  vote to count. Reaching quorum unlocks **finalize**; missing it unlocks
-  **cancel**.
+  vote to count. Reaching quorum unlocks **finalize**.
 - **Plurality** — the proposal with the most votes wins when quorum is met.
 - **Proposal / Bid** — a company's offer: total budget, stage schedule, and
   collateral.
@@ -385,25 +372,20 @@ by color alone.
 
 ---
 
-## 9. The demo clock
+## 9. Deadlines
 
-Deadlines (voting and funding) are central to the contract, but no one wants
-to wait a week. The **demo clock** (bottom-right) advances the simulated time:
-
-- `+1d` / `+7d` — move the clock forward.
-- `-1d` — move it back (handy if you overshoot).
-
-The displayed date is the demo's "now", which drives all `timeFromNow` /
-`closes in…` labels and deadline logic. Use it to fast-forward past the voting
-deadline, the funding deadline, or to the next stage.
+This build has **no deadlines**: a project stays in **Voting** until quorum is
+met, then finalizes. There is therefore no demo clock — the app uses the real
+on-chain block time.
 
 ---
 
 ## 10. Connecting a real Midnight wallet
 
-The demo roles are the default path, but the app also supports a **real
-Midnight wallet** through the DApp Connector API (`window.midnight`, e.g.
-Lace or 1AM):
+The app uses a **real Midnight wallet** through the DApp Connector API
+(`window.midnight`, e.g. Lace or 1AM). The demo role cards let you enter
+without a wallet to look around, but deploying the contract and every action
+require a connected wallet:
 
 1. Install a DApp Connector wallet extension and refresh the login page.
 2. Under **Connect your Midnight wallet**, pick a network with the **Network**
@@ -413,11 +395,10 @@ Lace or 1AM):
 
 Notes:
 
-- A real wallet connection lets the app demonstrate the *wallet→contract*
-  interaction surface, but the demo state is still simulated locally in this
-  build — no transactions are broadcast and no funds move.
-- Membership is still tied to the member registry, so a connected address
-  must be added by the admin to appear as a registered member.
+- Every transaction is broadcast on the selected network and settled by the
+  contract; the wallet signs, balances and proves it.
+- Membership is tied to the member registry, so a connected address must be
+  added by the admin to appear as a registered member.
 - Wallet errors (e.g. rejected permission) are surfaced as red toasts.
 
 ---
@@ -430,45 +411,38 @@ Click **Config** (bottom-left) to open the config modal. It has two parts:
   connect on, and the network used for new deployments. It persists your
   choice across reloads.
 - **Restart demo** — wipes all saved demo data and returns to the login
-  screen with the seed project restored. See
-  [§12](#12-state-persistence--resetting-the-demo).
+  screen. See [§12](#12-state-persistence--resetting-the-demo).
 
 ---
 
 ## 12. State persistence & resetting the demo
 
-- All demo state (members, projects, votes, the clock, deployed contract) is
-  saved to your browser's `localStorage` under `govfund.state.v1`, so the
-  demo **survives page reloads**.
-- A seed snapshot (the "Metro Line 4" project) is loaded on first visit.
-- **To start completely fresh** with the UI: open **Config** (bottom-left) →
-  **Restart demo** → **Confirm restart**. This removes the saved state (and
-  the saved network choice), clears the demo back to its seed snapshot, and
-  returns you to the login screen.
+- App state (role, the deployed contract, the member registry, votes,
+  descriptions, the demo company) is saved to your browser's `localStorage`
+  under `govfund.app.v1`, so the app **survives page reloads**.
+- **To start completely fresh**: open **Config** (bottom-left) → **Restart
+  demo** → **Confirm restart**. This clears the saved state (and the saved
+  network choice) and returns you to the login screen.
 - If you prefer to clear it manually, you can also remove the key from the
   browser console:
 
 ```js
-localStorage.removeItem("govfund.state.v1");
+localStorage.removeItem("govfund.app.v1");
 location.reload();
 ```
-
-- The demo also syncs proposal descriptions to a Supabase table when a network
-  is available; if it isn't, the sync silently no-ops and the demo is
-  unaffected.
 
 ---
 
 ## 13. Troubleshooting & FAQ
 
 **The login page says "No Midnight wallet detected".**
-That's expected in demo mode — click one of the **three role cards** to enter
-without a wallet. A wallet is only required for the optional real-wallet flow.
+Install a DApp Connector wallet extension and refresh. You can still enter via
+one of the **three role cards** to look around, but a wallet is required to
+deploy the contract and submit transactions.
 
 **I deployed but nothing seems to exist yet.**
-You start with the seeded "Metro Line 4" project in **Voting**. Open more
-projects as Member, and bid as Company. (Adding members in the Admin console
-is optional — remember it raises the votes needed for quorum.)
+Open a project as Member, then bid as Company. (Adding members in the Admin
+console is optional — remember it raises the votes needed for quorum.)
 
 **I can't approve a stage.**
 Two common causes:
@@ -478,16 +452,13 @@ Two common causes:
   after a payment request.
 
 **I can't finalize the vote.**
-Finalize only unlocks **after** the voting deadline passes **and** quorum is
-met. The demo allows one vote per project, so quorum must be reachable with a
-single vote: keep the member registry small (one member meets a `60%` quorum
-with one vote) and advance past the voting deadline with the demo clock
-(`+7d`).
+Finalize only unlocks once quorum is met. The app allows one vote per project,
+so quorum must be reachable with a single vote: keep the member registry small
+(one member meets a `50%` quorum with one vote).
 
-**The project expired / got cancelled.**
-Voting quorum was missed (→ *Cancelled*), or the funding deadline passed
-without funding (→ *Cancelled* via *Expire funding*). Re-open a project with a
-wider window if you want more time.
+**My project won't leave Voting.**
+A project only leaves **Voting** once quorum is met and **Finalize selection**
+is run — there are no deadlines or cancellations in this build.
 
 **My stage shows "Max rejections reached — stage blocked".**
 The project's `max stage rejections` were exhausted. Only termination or a
@@ -498,8 +469,8 @@ All amounts are plain NIGHT values (no decimals) formatted with thousands
 separators. `1,000,000 NIGHT = 1M NIGHT`.
 
 **Can I undo something?**
-The demo clock can go backwards (`-1d`), but state changes are not undoable.
-Use **Config → Restart demo** to wipe the saved state and start over.
+State changes are not undoable. Use **Config → Restart demo** to wipe the
+saved state and start over.
 
 ---
 

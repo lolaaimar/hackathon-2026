@@ -9,8 +9,7 @@ voting and stage-based vesting. A single contract instance manages many projects
   anonymous — who voted is hidden, vote counts are public.
 - **Companies** submit budget proposals (identity hidden behind a commitment)
   and deposit a collateral.
-- The government selects a winner by **quorum + plurality** after the project
-  deadline.
+- The government selects a winner by **quorum + plurality** once quorum is met.
 - The winner reveals its identity, the government **deposits the budget** into
   the contract, and funds are released **stage by stage** as reviewers approve
   each milestone.
@@ -19,15 +18,16 @@ voting and stage-based vesting. A single contract instance manages many projects
 
 ## Contract features
 
-| Area             | Behavior                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| Admin            | Manages members and configures `quorumPercent` / `approvalsRequired`                |
-| Private voting   | Merkle-tree membership + nullifiers; per-proposal counts are public                 |
-| Proposer privacy | Proposals committed; identity revealed only to proceed with funding                 |
-| Vesting          | Fixed stage schedule per proposal; N reviewers must approve each stage              |
-| Collateral       | Deposited at proposal time; returned to losers / winner, slashed on termination     |
-| Deadlines        | Voting deadline (cancel if not finalized) and funding deadline (cancel if unfunded) |
-| Funds            | Shielded `fundingToken` (e.g. NIGHT) pooled in the contract                         |
+| Area             | Behavior                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| Admin            | Deploys the contract; manages the member registry (`manageMember`)                     |
+| First member     | The deployer is registered as the first member at deploy                               |
+| Sealed config    | `quorumPercent` / `approvalsRequired` are fixed in the constructor                    |
+| Private voting   | Merkle-tree membership + nullifiers; per-proposal counts are public                   |
+| Proposer privacy | Proposals committed; identity revealed only to proceed with funding                   |
+| Vesting          | Fixed stage schedule per proposal; N reviewers must approve each stage                |
+| Collateral       | Deposited at proposal time; returned to losers / winner, slashed on termination       |
+| Funds            | Shielded `fundingToken` (e.g. NIGHT) pooled in the contract                           |
 
 ## Project layout
 
@@ -35,16 +35,18 @@ voting and stage-based vesting. A single contract instance manages many projects
 contract/src/index.compact      main contract (config ledgers, project/vesting circuits)
 contract/src/types.compact      shared types (included by index)
 contract/src/Membership.compact module: government member registry + anonymous membership
+contract/src/types.ts           private-state types
+contract/src/witnesses.ts       witness factory + per-role private state
 contract/src/managed/           compiler output (generated, gitignored)
 contract/__tests__/             native vitest suite
 │   GovFundSimulator.ts         CircuitContext test harness (deploy + drive the contract)
 │   witnesses.ts                test witnesses + role private states
 │   admin.test.ts               admin & membership management
-│   membership.test.ts          projects, proposals, voting, funding, cancel/expire
+│   membership.test.ts          projects, proposals, voting, funding
 │   vesting.test.ts             stage releases, rejections, termination, collateral
-│   workflow.test.ts            narrated end-to-end demo (5 members, 3 companies)
-api/src/witnesses.ts            witness factory + per-role private state
-api/src/types.ts                generated type re-exports + private-state types
+│   workflow.test.ts            narrated end-to-end demo (deployer + 5 members, 3 companies)
+api/src/index.ts                public API: per-circuit callTx helpers + types
+api/src/node.ts                 node-side deploy/find helpers
 design.md                       full design document
 ```
 
@@ -91,6 +93,6 @@ The suite drives the compiled contract directly through the runtime
 
 | Command             | Runs                                   | Count |
 | ------------------- | -------------------------------------- | ----- |
-| `npm test`          | full suite                             | 71    |
-| `npm run test:unit` | admin, membership, vesting             | 70    |
+| `npm test`          | full suite                             | 54    |
+| `npm run test:unit` | admin, membership, vesting             | 53    |
 | `npm run test:e2e`  | narrated end-to-end workflow (verbose) | 1     |
