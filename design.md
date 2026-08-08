@@ -27,8 +27,9 @@ and stage-based vesting. A single contract instance manages many projects.
 - `pk = persistentHash([pad(32,"govfund:pk:"), sk])` is the identity for members
   and companies; `sk` lives only in the actor's private state.
 - Members register a **committed leaf** `commit = persistentCommit(pk, salt)` in
-  `members: HistoricMerkleTree<16, Bytes<32>>`. A member proves membership with a
-  Merkle path + by opening the commitment — who acts is hidden (leaves are
+  `members: HistoricMerkleTree<6, Bytes<32>>` (depth 6 = max 64 members; shallow
+  depth keeps the per-circuit Merkle path proof cheap). A member proves membership
+  with a Merkle path + by opening the commitment — who acts is hidden (leaves are
   commitments, not raw public keys).
 - Removal (`removeMember`) adds the commitment to `revokedMembers`; revoked
   members can no longer prove membership. A removal is blocked if it would make
@@ -114,8 +115,8 @@ api/src/witnesses.ts            witness factory + per-role private state helpers
 
 The `Membership` module owns the government member registry; the main contract imports it
 (`import "./Membership" prefix Mem_`) and reads/writes its exported ledgers directly. The
-ledgers and the read-only views (`activeMemberCount`, `isRevoked`, `isMember`) are re-exported
-at the top level, so the TypeScript `ledger()` exposes them as `Mem_members` (with
+ledgers are re-exported at the top level, so the TypeScript `ledger()` exposes them as
+`Mem_members` (with
 `findPathForLeaf`/`root`), `Mem_revokedMembers`, and `Mem_memberCount`.
 
 Build: `npm run compile` (compiles contract, `--skip-zk`) ·
