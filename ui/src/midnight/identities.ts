@@ -98,6 +98,8 @@ export const memberCommitOf = (identity: RoleIdentity): Uint8Array =>
 export const companyCommitOf = (identity: RoleIdentity): Uint8Array =>
   memberCommit(identity.sk!, identity.nonce!);
 
+export { memberCommit };
+
 export const toPrivateState = (identity: RoleIdentity): GovFundPrivateState => {
   if (identity.salt !== undefined) {
     return createMemberState(identity.sk!, identity.salt);

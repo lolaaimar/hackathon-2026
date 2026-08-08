@@ -13,6 +13,7 @@ import { GovFundClient } from '../midnight/client';
 import {
   companyCommitOf,
   getRoleIdentity,
+  memberCommit,
   memberCommitOf,
   type RoleIdentity,
 } from '../midnight/identities';
@@ -47,6 +48,7 @@ type Persisted = {
   role?: Role;
   address?: string;
   networkId?: string;
+  deployerAddress?: string;
   demoCompany?: string;
   memberRegistry?: { commit: string; label: string }[];
   descriptions?: Record<string, string>;
@@ -129,7 +131,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
     address: persisted.address ?? null,
     networkId: persisted.networkId ?? null,
     deployedAt: null,
-    deployerAddress: null,
+    deployerAddress: persisted.deployerAddress ?? null,
   });
   const [demoCompany, setDemoCompany] = useState(persisted.demoCompany ?? 'My Company');
   const [memberRegistry, setMemberRegistry] = useState(persisted.memberRegistry ?? []);
@@ -152,6 +154,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
       role: role ?? undefined,
       address: contract.address ?? undefined,
       networkId: contract.networkId ?? undefined,
+      deployerAddress: contract.deployerAddress ?? undefined,
       demoCompany,
       memberRegistry,
       descriptions,
@@ -176,8 +179,11 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
 
   const identityFor = useCallback(
     (r: Role): RoleIdentity => {
-      const key = contract.address ?? undefined;
-      const id = getRoleIdentity(r, key);
+      // The admin identity is global: it is the deployer's identity used at
+      // deploy time, so re-attaching with a per-contract key would derive a
+      // different sk and admin circuits would fail with "Not admin".
+      const id =
+        r === 'admin' ? getRoleIdentity('admin') : getRoleIdentity(r, contract.address ?? undefined);
       if (r === 'company' && id.nonce) {
         setMyCompanyCommit(bytesToHex(companyCommitOf(id)));
       }
@@ -346,8 +352,16 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
             address,
             networkId: action.networkId,
             deployedAt: Math.floor(Date.now() / 1000),
-            deployerAddress: null,
+            deployerAddress: wallet.address,
           });
+          // The deployer is registered as the first member on-chain; mirror it
+          // in the local registry so counts and quorum match the contract.
+          const adminCommit = bytesToHex(memberCommit(admin.sk!, new Uint8Array(32)));
+          setMemberRegistry((prev) =>
+            prev.some((m) => m.commit === adminCommit)
+              ? prev
+              : [{ commit: adminCommit, label: 'Admin (deployer)' }, ...prev],
+          );
           const sub = c.ledger$(address).subscribe({
             next: (l) => setLedger(l),
             error: () => {},

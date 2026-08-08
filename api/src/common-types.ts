@@ -10,12 +10,10 @@ export type GovFundCircuits =
   | 'submitProposal'
   | 'vote'
   | 'settleProject'
-  | 'revealCompany'
+  | 'companyClaim'
   | 'fundProject'
-  | 'withdrawCollateral'
   | 'requestPayment'
-  | 'approveStage'
-  | 'rejectStage'
+  | 'reviewStage'
   | 'voteTerminate';
 
 export const GovFundPrivateStateId = 'GovFundPrivateState';

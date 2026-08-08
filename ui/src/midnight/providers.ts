@@ -3,21 +3,21 @@ import type {
   GovFundPrivateState,
   GovFundPrivateStateId,
   GovFundProviders,
-} from '@govfund/api';
-import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
-import { Transaction } from '@midnight-ntwrk/ledger-v8';
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from "@govfund/api";
+import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
+import { Transaction } from "@midnight-ntwrk/ledger-v8";
+import { dappConnectorProofProvider } from "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider";
+import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
+import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
+import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
+import { CostModel } from "@midnight-ntwrk/midnight-js-protocol/ledger";
 import type {
   MidnightProvider,
   PrivateStateProvider,
   WalletProvider,
-} from '@midnight-ntwrk/midnight-js-types';
-import { fromHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { ZK_ASSETS_BASE } from './compiled.js';
+} from "@midnight-ntwrk/midnight-js-types";
+import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-utils";
+import { ZK_ASSETS_BASE } from "./compiled.js";
 
 /**
  * A session-scoped private state provider. GovFund's private state (the current
@@ -53,16 +53,16 @@ export function inMemoryPrivateStateProvider(): PrivateStateProvider<
       signingKeys.clear();
     },
     exportPrivateStates: async () => {
-      throw new Error('export not supported by in-memory provider');
+      throw new Error("export not supported by in-memory provider");
     },
     importPrivateStates: async () => {
-      throw new Error('import not supported by in-memory provider');
+      throw new Error("import not supported by in-memory provider");
     },
     exportSigningKeys: async () => {
-      throw new Error('export not supported by in-memory provider');
+      throw new Error("export not supported by in-memory provider");
     },
     importSigningKeys: async () => {
-      throw new Error('import not supported by in-memory provider');
+      throw new Error("import not supported by in-memory provider");
     },
   };
 }
@@ -97,7 +97,7 @@ export async function createGovFundProviders(api: ConnectedAPI): Promise<GovFund
     getEncryptionPublicKey: () => shieldedEncryptionPublicKey,
     balanceTx: async (tx) => {
       const { tx: balancedHex } = await api.balanceUnsealedTransaction(toHex(tx.serialize()), {});
-      return Transaction.deserialize('signature', 'proof', 'binding', fromHex(balancedHex));
+      return Transaction.deserialize("signature", "proof", "binding", fromHex(balancedHex));
     },
   };
 
@@ -117,3 +117,5 @@ export async function createGovFundProviders(api: ConnectedAPI): Promise<GovFund
     midnightProvider,
   };
 }
+
+// 0000000000000000000000000000000000000000000000000000000000000000

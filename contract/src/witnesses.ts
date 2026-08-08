@@ -14,7 +14,10 @@ import type { GovFundPrivateState } from './types.js';
 export const memberCommit = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   pureCircuits.memberCommit(pureCircuits.publicKeyOf(sk), salt);
 
-export const createAdminState = (sk: Uint8Array): GovFundPrivateState => ({ sk });
+export const createAdminState = (sk: Uint8Array): GovFundPrivateState => ({
+  sk,
+  salt: new Uint8Array(32),
+});
 
 export const createMemberState = (sk: Uint8Array, salt: Uint8Array): GovFundPrivateState => ({
   sk,

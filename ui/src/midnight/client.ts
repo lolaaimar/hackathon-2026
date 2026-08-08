@@ -13,6 +13,7 @@ import {
   fundProject,
   GovFundPrivateStateId,
   ledger,
+  memberCommit,
   rejectStage,
   removeMember,
   requestPayment,
@@ -60,6 +61,7 @@ export class GovFundClient {
         args.fundingTokenParam,
         args.treasuryParam,
         args.approvalsRequiredParam,
+        memberCommit(admin.sk!, new Uint8Array(32)),
       ],
     });
   }

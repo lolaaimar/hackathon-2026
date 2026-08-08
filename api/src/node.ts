@@ -5,7 +5,7 @@ import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { ZswapCoinPublicKey } from '../../contract/src/index.js';
-import { createAdminState, GovFund, witnesses } from '../../contract/src/index.js';
+import { createAdminState, GovFund, memberCommit, witnesses } from '../../contract/src/index.js';
 import type { GovFundProviders } from './common-types.js';
 import { GovFundPrivateStateId } from './common-types.js';
 import type { GovFundPrivateState } from './index.js';
@@ -73,6 +73,7 @@ export const deployGovFundContract = async (
       args.fundingTokenParam,
       args.treasuryParam,
       args.approvalsRequiredParam,
+      memberCommit(adminSk, new Uint8Array(32)),
     ],
   });
 };

@@ -266,16 +266,22 @@ circuit payCoin(recipient: ZswapCoinPublicKey, amount: Uint<128>): [] {
 
 /**
  * @description Deploys the contract, sealing the admin identity, funding token color and
- * treasury, and initializing the modifiable `quorumPercent` and `approvalsRequired` thresholds.
+ * treasury, initializing the modifiable `quorumPercent` and `approvalsRequired` thresholds,
+ * and registering the deployer as the first government member. The deployer's commitment is
+ * computed off-chain (see the `memberCommit` pure circuit) and passed in as a disclosed
+ * argument so the constructor stays a single-hash circuit (keeping the deploy transaction
+ * small enough for the on-chain block limits).
  * @param {Uint<16>} quorumPercentParam - Initial voting quorum percent (1..100).
  * @param {Bytes<32>} fundingTokenParam - Shielded token color used for all funds (e.g. NIGHT).
  * @param {ZswapCoinPublicKey} treasuryParam - Recipient of slashed collateral and un-released budget.
  * @param {Uint<16>} approvalsRequiredParam - Initial per-stage reviewer threshold (>= 1).
+ * @param {Bytes<32>} adminCommitParam - The deployer's committed identity `memberCommit(pk, salt)`.
  */
 constructor(quorumPercentParam: Uint<16>,
             fundingTokenParam: Bytes<32>,
             treasuryParam: ZswapCoinPublicKey,
-            approvalsRequiredParam: Uint<16>
+            approvalsRequiredParam: Uint<16>,
+            adminCommitParam: Bytes<32>
             ) {
   admin = disclose(Mem_get_public_key(admin_sk()));
   quorumPercent = disclose(quorumPercentParam);
@@ -284,6 +290,8 @@ constructor(quorumPercentParam: Uint<16>,
   treasury = disclose(treasuryParam);
   assert(disclose(quorumPercentParam >= 1 && quorumPercentParam <= 100), "Invalid quorum percent");
   assert(disclose(approvalsRequiredParam >= 1), "Invalid approval threshold");
+  Mem_members.insert(disclose(adminCommitParam));
+  Mem_memberCount.increment(1);
 }
 
 // ---------------------------- Pure helpers --------------------------------
@@ -520,42 +528,71 @@ export circuit settleProject(projectId: Bytes<32>): [] {
 }
 
 /**
- * @description The winner opens its proposal commitment so funding and vesting can proceed.
+ * @description A company re-opens its commitment with `nonce` to either reveal itself as the
+ * winner (`reveal == true`, so funding and vesting can proceed) or reclaim its collateral
+ * (`reveal == false`, for losing proposals after selection). The winner's collateral is held
+ * and returned at completion; slashed on termination.
  *
  * Requirements:
  *
- * - The project must be `Selected` with a winner, and not yet revealed.
- * - `nonce` and the caller's key must match the proposal's `companyCommit`.
+ * - The project and proposal must exist, and `nonce`/the caller's key must match the
+ *   proposal's `companyCommit`.
+ * - When revealing: the project must be `Selected` with this proposal as winner, not yet
+ *   revealed.
+ * - When withdrawing: the project must be past the voting phase and the proposal's collateral
+ *   must not already be withdrawn nor held by the winner.
  *
  * @param {Bytes<32>} projectId - The project identifier.
- * @param {Bytes<32>} proposalId - The winning proposal identifier.
+ * @param {Bytes<32>} proposalId - The proposal identifier.
  * @param {Bytes<32>} nonce - The commitment nonce used at submission.
  * @param {ZswapCoinPublicKey} coinPk - The company's coin public key (receives payments).
+ * @param {Boolean} reveal - Whether to reveal as winner (`true`) or withdraw collateral (`false`).
  * @return {[]} - Empty tuple.
  */
-export circuit revealCompany(
+export circuit companyClaim(
                  projectId: Bytes<32>,
                  proposalId: Bytes<32>,
                  nonce: Bytes<32>,
-                 coinPk: ZswapCoinPublicKey
+                 coinPk: ZswapCoinPublicKey,
+                 reveal: Boolean
                  ): [] {
   assert(disclose(projects.member(disclose(projectId))), "Unknown project");
   const p = projects.lookup(disclose(projectId));
-  assert(disclose(p.status == ProjectStatus.Selected), "Not selected");
-  const hasWinner = disclose(p.winner.is_some);
-  const isWinning = disclose(p.winner.value == proposalId);
-  assert(disclose(hasWinner && isWinning), "Not the winning proposal");
-  assert(disclose(!p.winnerCompany.is_some), "Winner already revealed");
-  assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
-  const prop = proposals.lookup(disclose(proposalId));
-  const sk = company_sk();
-  const pk = Mem_get_public_key(sk);
-  const commit = persistentCommit<Bytes<32>>(pk, nonce);
-  assert(disclose(commit == prop.companyCommit), "Invalid reveal");
-  projects.insert(
-    disclose(projectId),
-    disclose(ProjectInfo { ...p, winnerCompany: some<Winner>(Winner { pk: pk, coinPk: coinPk }) })
-    );
+  if (disclose(reveal)) {
+    assert(disclose(p.status == ProjectStatus.Selected), "Not selected");
+    const hasWinner = disclose(p.winner.is_some);
+    const isWinning = disclose(p.winner.value == proposalId);
+    assert(disclose(hasWinner && isWinning), "Not the winning proposal");
+    assert(disclose(!p.winnerCompany.is_some), "Winner already revealed");
+    assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
+    const prop = proposals.lookup(disclose(proposalId));
+    const sk = company_sk();
+    const pk = Mem_get_public_key(sk);
+    const commit = persistentCommit<Bytes<32>>(pk, nonce);
+    assert(disclose(commit == prop.companyCommit), "Invalid reveal");
+    projects.insert(
+      disclose(projectId),
+      disclose(ProjectInfo { ...p, winnerCompany: some<Winner>(Winner { pk: pk, coinPk: coinPk }) })
+      );
+  } else {
+    const postVote =
+            p.status == ProjectStatus.Selected ||
+            p.status == ProjectStatus.InProgress ||
+            p.status == ProjectStatus.Completed ||
+            p.status == ProjectStatus.Terminated;
+    assert(disclose(postVote), "Not withdrawable yet");
+    assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
+    const prop = proposals.lookup(disclose(proposalId));
+    assert(disclose(prop.collateral > 0), "Collateral already withdrawn");
+    const isWinner = p.winner.is_some && p.winner.value == proposalId;
+    assert(disclose(!isWinner), "Winner collateral is held");
+    const sk = company_sk();
+    const pk = Mem_get_public_key(sk);
+    const commit = persistentCommit<Bytes<32>>(pk, nonce);
+    assert(disclose(commit == prop.companyCommit), "Invalid reveal");
+    payCoin(coinPk, prop.collateral as Uint<128>);
+    proposals.insert(disclose(proposalId), disclose(Proposal { ...prop, collateral: 0 }));
+  }
 }
 
 /**
@@ -588,48 +625,6 @@ export circuit fundProject(projectId: Bytes<32>, depositCoin: ShieldedCoinInfo):
     disclose(projectId),
     disclose(ProjectInfo { ...p, budget: prop.budget, status: ProjectStatus.InProgress })
     );
-}
-
-/**
- * @description A company reclaims its collateral by re-opening its commitment. Losers may
- * withdraw after selection. The winner's collateral is held and returned at completion.
- *
- * Requirements:
- *
- * - The project must be past the voting phase.
- * - The proposal must match the commitment and its collateral must not already be withdrawn.
- *
- * @param {Bytes<32>} projectId - The project identifier.
- * @param {Bytes<32>} proposalId - The proposal identifier.
- * @param {Bytes<32>} nonce - The commitment nonce used at submission.
- * @param {ZswapCoinPublicKey} coinPk - Where to send the returned collateral.
- * @return {[]} - Empty tuple.
- */
-export circuit withdrawCollateral(
-                 projectId: Bytes<32>,
-                 proposalId: Bytes<32>,
-                 nonce: Bytes<32>,
-                 coinPk: ZswapCoinPublicKey
-                 ): [] {
-  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
-  const p = projects.lookup(disclose(projectId));
-  const postVote =
-          p.status == ProjectStatus.Selected ||
-          p.status == ProjectStatus.InProgress ||
-          p.status == ProjectStatus.Completed ||
-          p.status == ProjectStatus.Terminated;
-  assert(disclose(postVote), "Not withdrawable yet");
-  assert(disclose(proposals.member(disclose(proposalId))), "Unknown proposal");
-  const prop = proposals.lookup(disclose(proposalId));
-  assert(disclose(prop.collateral > 0), "Collateral already withdrawn");
-  const isWinner = p.winner.is_some && p.winner.value == proposalId;
-  assert(disclose(!isWinner), "Winner collateral is held");
-  const sk = company_sk();
-  const pk = Mem_get_public_key(sk);
-  const commit = persistentCommit<Bytes<32>>(pk, nonce);
-  assert(disclose(commit == prop.companyCommit), "Invalid reveal");
-  payCoin(coinPk, prop.collateral as Uint<128>);
-  proposals.insert(disclose(proposalId), disclose(Proposal { ...prop, collateral: 0 }));
 }
 
 // --------------------------- Vesting circuits ------------------------------
@@ -676,11 +671,13 @@ export circuit requestPayment(projectId: Bytes<32>): [] {
 }
 
 /**
- * @description A member approves the pending stage. Once `approvalsRequired` members have
- * approved, the stage amount is released to the winner and the next stage begins; approving the
- * final stage marks the project `Completed` and returns the winner's collateral. The stage
- * amount, stage count and winner collateral are read from cached `ProjectInfo` fields set by
- * `settleProject`/`requestPayment`, so this circuit never looks up the winning proposal.
+ * @description A member reviews the pending stage, approving or rejecting it. Once
+ * `approvalsRequired` members have approved, the stage amount is released to the winner and the
+ * next stage begins; approving the final stage marks the project `Completed` and returns the
+ * winner's collateral. A rejection clears the pending request and accumulates toward
+ * `maxStageRejections` (the company may retry with a fresh attempt until the limit is reached).
+ * The stage amount, stage count and winner collateral are read from cached `ProjectInfo` fields
+ * set by `settleProject`/`requestPayment`, so this circuit never looks up the winning proposal.
  *
  * Requirements:
  *
@@ -689,9 +686,10 @@ export circuit requestPayment(projectId: Bytes<32>): [] {
  * - The caller must not have already acted on this stage attempt.
  *
  * @param {Bytes<32>} projectId - The project identifier.
+ * @param {Boolean} approve - Whether this review approves (`true`) or rejects (`false`) the stage.
  * @return {[]} - Empty tuple.
  */
-export circuit approveStage(projectId: Bytes<32>): [] {
+export circuit reviewStage(projectId: Bytes<32>, approve: Boolean): [] {
   const sk = Mem_require_member();
   assert(disclose(projects.member(disclose(projectId))), "Unknown project");
   const p = projects.lookup(disclose(projectId));
@@ -703,60 +701,36 @@ export circuit approveStage(projectId: Bytes<32>): [] {
          "Already acted on this stage"
          );
   stageActionNullifiers.lookup(disclose(projectId)).insert(n);
-  const amount = p.stageAmount;
-  const newApprovals = (p.stageApprovals + 1) as Uint<16>;
-  const nextStage = (p.currentStage + 1) as Uint<16>;
-  const approved = newApprovals >= approvalsRequired;
-  const finished = approved && nextStage >= p.stageCount;
-  if (approved) {
-    payCoin(p.winnerCompany.value.coinPk, amount as Uint<128>);
-    if (finished) {
-      payCoin(p.winnerCompany.value.coinPk, p.winnerCollateral as Uint<128>);
+  if (disclose(approve)) {
+    const amount = p.stageAmount;
+    const newApprovals = (p.stageApprovals + 1) as Uint<16>;
+    const nextStage = (p.currentStage + 1) as Uint<16>;
+    const approved = newApprovals >= approvalsRequired;
+    const finished = approved && nextStage >= p.stageCount;
+    if (approved) {
+      payCoin(p.winnerCompany.value.coinPk, amount as Uint<128>);
+      if (finished) {
+        payCoin(p.winnerCompany.value.coinPk, p.winnerCollateral as Uint<128>);
+      }
     }
+    projects.insert(
+      disclose(projectId),
+      disclose(ProjectInfo { ...p,
+                             status: finished ? ProjectStatus.Completed : ProjectStatus.InProgress,
+                             currentStage: approved ? nextStage : p.currentStage,
+                             stagePending: approved ? false : p.stagePending,
+                             stageApprovals: approved ? 0 : newApprovals,
+                             stageRejections: approved ? 0 : p.stageRejections,
+                             disbursed: approved ? (p.disbursed + amount) as Uint<64> : p.disbursed, })
+      );
+  } else {
+    projects.insert(
+      disclose(projectId),
+      disclose(ProjectInfo { ...p,
+                             stagePending: false,
+                             stageRejections: (p.stageRejections + 1) as Uint<16>, })
+      );
   }
-  projects.insert(
-    disclose(projectId),
-    disclose(ProjectInfo { ...p,
-                           status: finished ? ProjectStatus.Completed : ProjectStatus.InProgress,
-                           currentStage: approved ? nextStage : p.currentStage,
-                           stagePending: approved ? false : p.stagePending,
-                           stageApprovals: approved ? 0 : newApprovals,
-                           stageRejections: approved ? 0 : p.stageRejections,
-                           disbursed: approved ? (p.disbursed + amount) as Uint<64> : p.disbursed, })
-    );
-}
-
-/**
- * @description A member rejects the pending stage, accumulating toward `maxStageRejections`.
- * The company may retry with a fresh attempt until the limit is reached.
- *
- * Requirements:
- *
- * - The caller must be an active government member.
- * - The project must be `InProgress` with a pending stage request.
- * - The caller must not have already acted on this stage attempt.
- *
- * @param {Bytes<32>} projectId - The project identifier.
- * @return {[]} - Empty tuple.
- */
-export circuit rejectStage(projectId: Bytes<32>): [] {
-  const sk = Mem_require_member();
-  assert(disclose(projects.member(disclose(projectId))), "Unknown project");
-  const p = projects.lookup(disclose(projectId));
-  assert(disclose(p.status == ProjectStatus.InProgress), "Not in progress");
-  assert(disclose(p.stagePending), "No payment requested");
-  assert(disclose(p.currentStage < p.stageCount), "Out of stages");
-  const n = action_nul(pad(32, "govfund:stage-act:"), sk, projectId, p.currentStage, p.stageAttempt);
-  assert(!stageActionNullifiers.lookup(disclose(projectId)).member(n),
-         "Already acted on this stage"
-         );
-  stageActionNullifiers.lookup(disclose(projectId)).insert(n);
-  projects.insert(
-    disclose(projectId),
-    disclose(ProjectInfo { ...p,
-                           stagePending: false,
-                           stageRejections: (p.stageRejections + 1) as Uint<16>, })
-    );
 }
 
 // ------------------------- Termination & cancel ----------------------------

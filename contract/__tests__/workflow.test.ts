@@ -6,7 +6,8 @@ import { adminState, bytes, companyState, memberState } from './witnesses.js';
 // ---------------------------------------------------------------------------
 // End-to-end demo of the real application workflow.
 //
-// A government (5 members) opens a public works project; three companies bid;
+// A government (the deployer plus 5 registered members) opens a public works
+// project; three companies bid;
 // the members vote anonymously; the winning company is funded and paid out
 // stage by stage as pairs of reviewers approve each milestone, until the
 // project completes and every coin has moved out of the contract.
@@ -57,7 +58,7 @@ describe('GovFund end-to-end workflow (demo)', () => {
     expect(s.admin).toEqual(pureCircuits.publicKeyOf(ADMIN.sk!));
     expect(s.quorumPercent).toEqual(50n);
     expect(s.approvalsRequired).toEqual(2n);
-    expect(s.Mem_memberCount).toEqual(0n);
+    expect(s.Mem_memberCount).toEqual(1n);
     console.log(`      quorum ${s.quorumPercent}%, ${s.approvalsRequired} reviewers per stage`);
 
     // ----------------------------------------------------------------
@@ -68,8 +69,8 @@ describe('GovFund end-to-end workflow (demo)', () => {
       sim.addMember(commit);
     });
     s = sim.getLedger();
-    expect(s.Mem_memberCount).toEqual(5n);
-    console.log('      5 members added');
+    expect(s.Mem_memberCount).toEqual(6n);
+    console.log('      5 members added (plus the deployer)');
 
     // ----------------------------------------------------------------
     step('A member opens the project "Suspension Bridge"');
@@ -112,7 +113,7 @@ describe('GovFund end-to-end workflow (demo)', () => {
     console.log('      3 proposals received, identities committed');
 
     // ----------------------------------------------------------------
-    step('Members vote anonymously (quorum is 3 of 5)');
+    step('Members vote anonymously (quorum is 3 of 6)');
     // ----------------------------------------------------------------
     sim.setActor(M1);
     sim.vote(PROJECT_ID, PROPOSAL_A);

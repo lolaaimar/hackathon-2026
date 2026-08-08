@@ -8,6 +8,9 @@
     "api",
     "ui"
   ],
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  },
   "scripts": {
     "compile": "npm run compile --workspace contract",
     "compile:zk": "npm run compile:zk --workspace contract",

@@ -66,6 +66,7 @@ export class GovFundSimulator {
       config.fundingToken ?? ZERO_TOKEN,
       config.treasury ?? { bytes: new Uint8Array(32).fill(0xee) },
       config.approvalsRequired ?? 2n,
+      memberCommitOf(admin.sk!, admin.salt!),
     );
     this.circuitContext = createCircuitContext(
       dummyContractAddress(),
@@ -186,12 +187,13 @@ export class GovFundSimulator {
     nonce: Uint8Array,
     coinPk: ZswapCoinPublicKey,
   ): void {
-    this.circuitContext = this.contract.impureCircuits.revealCompany(
+    this.circuitContext = this.contract.impureCircuits.companyClaim(
       this.circuitContext,
       projectId,
       proposalId,
       nonce,
       coinPk,
+      true,
     ).context;
   }
 
@@ -209,12 +211,13 @@ export class GovFundSimulator {
     nonce: Uint8Array,
     coinPk: ZswapCoinPublicKey,
   ): void {
-    this.circuitContext = this.contract.impureCircuits.withdrawCollateral(
+    this.circuitContext = this.contract.impureCircuits.companyClaim(
       this.circuitContext,
       projectId,
       proposalId,
       nonce,
       coinPk,
+      false,
     ).context;
   }
 
@@ -228,16 +231,18 @@ export class GovFundSimulator {
   }
 
   approveStage(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.approveStage(
+    this.circuitContext = this.contract.impureCircuits.reviewStage(
       this.circuitContext,
       projectId,
+      true,
     ).context;
   }
 
   rejectStage(projectId: Uint8Array): void {
-    this.circuitContext = this.contract.impureCircuits.rejectStage(
+    this.circuitContext = this.contract.impureCircuits.reviewStage(
       this.circuitContext,
       projectId,
+      false,
     ).context;
   }
 

@@ -43,6 +43,8 @@ const toInProgress = (sim: GovFundSimulator): void => {
   sim.vote(PROJECT_ID, PROPOSAL_1);
   sim.setActor(MEMBER_B);
   sim.vote(PROJECT_ID, PROPOSAL_1);
+  sim.setActor(ADMIN);
+  sim.vote(PROJECT_ID, PROPOSAL_1);
   sim.settleProject(PROJECT_ID);
   sim.setActor(COMPANY_A);
   sim.revealCompany(PROJECT_ID, PROPOSAL_1, COMPANY_A.nonce!, WINNER_COINPK);
@@ -225,7 +227,9 @@ describe('GovFund vesting & money', () => {
       sim.approveStage(PROJECT_ID); // release stage 1 -> pot 70
 
       sim.setActor(MEMBER_A);
-      sim.voteTerminate(PROJECT_ID); // quorum (50% of 2 = 1)
+      sim.voteTerminate(PROJECT_ID); // quorum (50% of 3 = 2)
+      sim.setActor(MEMBER_B);
+      sim.voteTerminate(PROJECT_ID);
 
       const p = sim.getLedger().projects.lookup(PROJECT_ID);
       expect(p.status).toEqual(ProjectStatus.Terminated);
@@ -241,11 +245,17 @@ describe('GovFund vesting & money', () => {
       sim.setActor(MEMBER_A);
       sim.voteTerminate(PROJECT_ID);
 
-      // not yet quorum (2 members needed at 100%)
+      // not yet quorum (3 members needed at 100%)
       expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(ProjectStatus.InProgress);
       expect(sim.getLedger().projects.lookup(PROJECT_ID).terminateVotes).toEqual(1n);
 
       sim.setActor(MEMBER_B);
+      sim.voteTerminate(PROJECT_ID);
+
+      // still not quorum
+      expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(ProjectStatus.InProgress);
+
+      sim.setActor(ADMIN);
       sim.voteTerminate(PROJECT_ID);
 
       expect(sim.getLedger().projects.lookup(PROJECT_ID).status).toEqual(ProjectStatus.Terminated);
@@ -303,7 +313,9 @@ describe('GovFund vesting & money', () => {
       toInProgress(sim);
 
       sim.setActor(MEMBER_A);
-      sim.voteTerminate(PROJECT_ID); // terminate (quorum 50% = 1)
+      sim.voteTerminate(PROJECT_ID); // quorum (50% of 3 = 2)
+      sim.setActor(MEMBER_B);
+      sim.voteTerminate(PROJECT_ID);
       const status = sim.getLedger().projects.lookup(PROJECT_ID).status;
       expect(status).toEqual(ProjectStatus.Terminated);
       // winner cannot withdraw once terminated (collateral slashed)

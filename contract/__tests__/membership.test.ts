@@ -269,6 +269,8 @@ describe('GovFund membership & voting', () => {
       submitBid(sim, COMPANY_A, PROPOSAL_1);
       sim.setActor(MEMBER_A);
       sim.vote(PROJECT_ID, PROPOSAL_1);
+      sim.setActor(MEMBER_B);
+      sim.vote(PROJECT_ID, PROPOSAL_1);
       sim.settleProject(PROJECT_ID);
     };
 
@@ -322,6 +324,8 @@ describe('GovFund membership & voting', () => {
       submitBid(sim, COMPANY_A, PROPOSAL_1);
       sim.setActor(MEMBER_A);
       sim.vote(PROJECT_ID, PROPOSAL_1);
+      sim.setActor(MEMBER_B);
+      sim.vote(PROJECT_ID, PROPOSAL_1);
       sim.settleProject(PROJECT_ID);
       sim.setActor(COMPANY_A);
       sim.revealCompany(PROJECT_ID, PROPOSAL_1, COMPANY_A.nonce!, {
@@ -344,6 +348,8 @@ describe('GovFund membership & voting', () => {
       openProject(sim);
       submitBid(sim, COMPANY_A, PROPOSAL_1);
       sim.setActor(MEMBER_A);
+      sim.vote(PROJECT_ID, PROPOSAL_1);
+      sim.setActor(MEMBER_B);
       sim.vote(PROJECT_ID, PROPOSAL_1);
       sim.settleProject(PROJECT_ID);
 

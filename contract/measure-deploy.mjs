@@ -4,7 +4,7 @@ import { CompiledContract } from "@midnight-ntwrk/midnight-js-protocol/compact-j
 import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { fileURLToPath } from "node:url";
-import { Contract as GovFund } from "./src/managed/govfund/contract/index.js";
+import { Contract as GovFund, pureCircuits } from "./src/managed/govfund/contract/index.js";
 
 setNetworkId("undeployed");
 
@@ -19,6 +19,7 @@ const govfundCompiledContract = CompiledContract.make(
   CompiledContract.withWitnesses({
     admin_sk: ({ privateState: ps }) => [ps, ps.sk],
     member_sk: ({ privateState: ps }) => [ps, ps.sk],
+    member_pk: ({ privateState: ps }) => [ps, pureCircuits.publicKeyOf(ps.sk)],
     member_salt: ({ privateState: ps }) => [ps, ps.salt],
     member_path: () => {
       throw new Error("member_path witness not available");
@@ -55,6 +56,7 @@ const result = await createUnprovenDeployTxFromVerifierKeys(
       new Uint8Array(32),
       { bytes: new Uint8Array(32).fill(0xee) },
       2n,
+      pureCircuits.memberCommit(pureCircuits.publicKeyOf(adminSk), new Uint8Array(32)),
     ],
   },
   Buffer.from(encPk).toString("hex"),

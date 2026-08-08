@@ -87,7 +87,7 @@ export const settleProject = (d: GovFundDeployedContract) => (projectId: Uint8Ar
 export const revealCompany =
   (d: GovFundDeployedContract) =>
   (projectId: Uint8Array, proposalId: Uint8Array, nonce: Uint8Array, coinPk: ZswapCoinPublicKey) =>
-    d.callTx.revealCompany(projectId, proposalId, nonce, coinPk);
+    d.callTx.companyClaim(projectId, proposalId, nonce, coinPk, true);
 
 /** A member deposits the winner's budget. */
 export const fundProject =
@@ -98,7 +98,7 @@ export const fundProject =
 export const withdrawCollateral =
   (d: GovFundDeployedContract) =>
   (projectId: Uint8Array, proposalId: Uint8Array, nonce: Uint8Array, coinPk: ZswapCoinPublicKey) =>
-    d.callTx.withdrawCollateral(projectId, proposalId, nonce, coinPk);
+    d.callTx.companyClaim(projectId, proposalId, nonce, coinPk, false);
 
 // ---------------------------- Vesting circuits -----------------------------
 
@@ -108,11 +108,11 @@ export const requestPayment = (d: GovFundDeployedContract) => (projectId: Uint8A
 
 /** A member approves the pending stage. */
 export const approveStage = (d: GovFundDeployedContract) => (projectId: Uint8Array) =>
-  d.callTx.approveStage(projectId);
+  d.callTx.reviewStage(projectId, true);
 
 /** A member rejects the pending stage. */
 export const rejectStage = (d: GovFundDeployedContract) => (projectId: Uint8Array) =>
-  d.callTx.rejectStage(projectId);
+  d.callTx.reviewStage(projectId, false);
 
 // ------------------------ Termination & cancellation ------------------------
 

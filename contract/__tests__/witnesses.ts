@@ -31,6 +31,7 @@ export const companyState = (seed: number): TestPrivateState => ({
 
 export const adminState = (seed: number): TestPrivateState => ({
   sk: bytes(seed),
+  salt: new Uint8Array(32),
 });
 
 export const makeTestWitnesses = (): Witnesses<TestPrivateState> => ({
