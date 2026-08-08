@@ -357,10 +357,6 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         toast(action.error, "error");
         return;
 
-      case "TIME_SKIP":
-        // On-chain time cannot be skipped; the contract uses real block time.
-        return;
-
       case "RESET":
         reset();
         return;

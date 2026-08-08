@@ -5,7 +5,7 @@ import { RefreshIcon } from './icons';
 import { Modal } from './Modal';
 import { NetworkPicker } from './NetworkPicker';
 
-const STATE_KEY = 'govfund.state.v1';
+const STATE_KEY = 'govfund.app.v1';
 const NETWORK_KEY = 'govfund.networkId';
 
 export function ConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -42,8 +42,8 @@ export function ConfigModal({ open, onClose }: { open: boolean; onClose: () => v
       <div className="mt-6 space-y-3 border-t border-line pt-4">
         <h3 className="text-[13px] font-semibold text-ink">Restart demo</h3>
         <p className="text-[12px] leading-5 text-muted">
-          Clears all saved demo data (members, projects, votes, the clock, the deployed contract)
-          and returns to the login screen with the seed project restored.
+          Clears all saved demo data (members, projects, votes, the deployed contract) and
+          returns to the login screen.
         </p>
         {confirming ? (
           <div className="flex flex-wrap items-center gap-2">

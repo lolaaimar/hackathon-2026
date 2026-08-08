@@ -37,7 +37,6 @@ export default defineConfig({
     fs: { allow: ['..'] },
   },
   optimizeDeps: {
-    include: ['level', 'browser-level', 'abstract-level', 'level-supports', 'level-transcoder'],
     esbuildOptions: { target: 'esnext' },
   },
   build: { target: 'esnext' },

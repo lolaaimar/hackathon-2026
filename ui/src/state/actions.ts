@@ -28,7 +28,6 @@ export type Action =
     }
   | { type: 'WALLET_DISCONNECTED' }
   | { type: 'WALLET_ERROR'; error: string }
-  | { type: 'TIME_SKIP'; days: number }
   | { type: 'RESET' }
   | {
       type: 'CONTRACT_DEPLOY';
