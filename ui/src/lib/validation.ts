@@ -1,3 +1,4 @@
+import { MAX_STAGES } from '@govfund/api';
 import type { Stage } from '../types';
 
 export function sumStages(stages: Stage[]): number {
@@ -12,6 +13,7 @@ export function validateProposal(
 ): string | null {
   if (budget <= 0) return 'Budget must be positive.';
   if (stages.length < 1) return 'Add at least one stage.';
+  if (stages.length > MAX_STAGES) return `At most ${MAX_STAGES} stages are supported.`;
   if (sumStages(stages) !== budget)
     return `Stages must sum exactly to the budget (currently ${sumStages(stages)} / ${budget}).`;
   if (collateral < collateralRequired)

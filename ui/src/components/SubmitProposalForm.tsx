@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MAX_STAGES } from '@govfund/api';
 import { validateProposal } from '../lib/validation';
 import { useGovFund } from '../state/provider';
 import type { ProjectInfo } from '../types';
@@ -120,7 +121,13 @@ export function SubmitProposalForm({
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[13px] font-medium text-body">Stage schedule</span>
-          <Button type="button" size="sm" variant="ghost" onClick={addStage}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={addStage}
+            disabled={stages.length >= MAX_STAGES}
+          >
             <PlusIcon size={13} /> Add stage
           </Button>
         </div>

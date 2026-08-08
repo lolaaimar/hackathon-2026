@@ -1,3 +1,4 @@
+import { MAX_STAGES } from "@govfund/api";
 import type {
   GovFundDeployedContract,
   Ledger,
@@ -581,7 +582,7 @@ export function GovFundProvider({ children }: { children: ReactNode }) {
         const stages = action.input.stages
           .map((s) => ({ amount: BigInt(Math.round(s.amount)) }))
           .concat(
-            Array.from({ length: 60 - action.input.stages.length }, () => ({
+            Array.from({ length: MAX_STAGES - action.input.stages.length }, () => ({
               amount: 0n,
             })),
           );
