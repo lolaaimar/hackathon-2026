@@ -2,8 +2,8 @@ import type { ProjectInfo, Proposal } from "../types";
 import { Button } from "./ui/Button";
 import { AlertIcon, CheckIcon, LockIcon, VoteIcon } from "./ui/icons";
 import { fmtNight } from "../lib/format";
-import { canWithdraw, isWinner, mineOf } from "../mock/guards";
-import { useGovFund } from "../mock/store";
+import { canWithdraw, isWinner, mineOf } from "../state/guards";
+import { useGovFund } from "../state/provider";
 import { sumStages } from "../lib/validation";
 
 export function ProposalList({

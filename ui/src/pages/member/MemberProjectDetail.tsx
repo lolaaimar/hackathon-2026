@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { ProjectHeader } from "../../components/ProjectHeader";
 import { ProposalList } from "../../components/ProposalList";
 import { StagePanel } from "../../components/StagePanel";
@@ -15,7 +15,7 @@ import {
   canFund,
   quorumNeeded,
   winnerProposal,
-} from "../../mock/guards";
+} from "../../state/guards";
 import { fmtNight } from "../../lib/format";
 import { timeFromNow } from "../../lib/time";
 

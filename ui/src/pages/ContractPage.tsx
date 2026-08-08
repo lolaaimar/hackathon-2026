@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import { getSelectedNetwork, SUPPORTED_NETWORKS } from "../wallet/selectWallet";
-import { memberByAddress } from "../mock/guards";
+import { memberByAddress } from "../state/guards";
 import { Button } from "../components/ui/Button";
 import { Card, CardHeader } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";

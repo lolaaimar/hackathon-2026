@@ -1,5 +1,5 @@
 import type { ProjectInfo } from "../types";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import { Button } from "./ui/Button";
 import { Progress } from "./ui/Progress";
 import { CheckIcon, ScaleIcon, XIcon } from "./ui/icons";
@@ -10,7 +10,7 @@ import {
   canTerminate,
   quorumNeeded,
   winnerProposal,
-} from "../mock/guards";
+} from "../state/guards";
 import type { Role } from "../types";
 
 export function StagePanel({ project, role }: { project: ProjectInfo; role: Role }) {

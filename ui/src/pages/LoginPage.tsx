@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import {
   connectWallet,
   getSelectedNetwork,
@@ -21,16 +21,30 @@ import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "../lib/roles";
 import type { Role } from "../types";
 
 const DEMO_ROLES: { role: Role; icon: React.ReactNode; blurb: string }[] = [
-  { role: "admin", icon: <ShieldIcon size={20} />, blurb: ROLE_DESCRIPTIONS.admin },
-  { role: "member", icon: <UsersIcon size={20} />, blurb: ROLE_DESCRIPTIONS.member },
-  { role: "company", icon: <BuildingIcon size={20} />, blurb: ROLE_DESCRIPTIONS.company },
+  {
+    role: "admin",
+    icon: <ShieldIcon size={20} />,
+    blurb: ROLE_DESCRIPTIONS.admin,
+  },
+  {
+    role: "member",
+    icon: <UsersIcon size={20} />,
+    blurb: ROLE_DESCRIPTIONS.member,
+  },
+  {
+    role: "company",
+    icon: <BuildingIcon size={20} />,
+    blurb: ROLE_DESCRIPTIONS.company,
+  },
 ];
 
 export function LoginPage() {
   const { dispatch, toast, setRole } = useGovFund();
   const navigate = useNavigate();
 
-  const [wallets, setWallets] = useState<WalletDescriptor[]>(() => listWallets());
+  const [wallets, setWallets] = useState<WalletDescriptor[]>(() =>
+    listWallets(),
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,12 +57,16 @@ export function LoginPage() {
     setBusy(w.rdns);
     setError(null);
     try {
-      const { address, networkId } = await connectWallet(w.api, getSelectedNetwork());
+      const { api, address, networkId } = await connectWallet(
+        w.api,
+        getSelectedNetwork(),
+      );
       dispatch({
         type: "WALLET_CONNECTED",
         walletName: w.name,
         address,
         networkId,
+        api,
       });
       toast(`Connected to ${w.name}.`, "success");
       enterAs("member");
@@ -76,14 +94,24 @@ export function LoginPage() {
             Private procurement, publicly verifiable.
           </h1>
           <p className="mt-4 text-[15px] leading-7 text-white/75">
-            One contract manages many government projects. Companies bid anonymously,
-            members vote in secret, and funds release stage by stage as milestones pass.
+            One contract manages many government projects. Companies bid
+            anonymously, members vote in secret, and funds release stage by
+            stage as milestones pass.
           </p>
           <ul className="mt-8 space-y-3 text-[14px]">
             {[
-              { icon: <VoteIcon size={17} />, text: "Anonymous voting — counts are public, identities hidden." },
-              { icon: <LockIcon size={17} />, text: "Proposer privacy — identity revealed only to get funded." },
-              { icon: <BuildingIcon size={17} />, text: "Stage-based vesting with reviewer approval." },
+              {
+                icon: <VoteIcon size={17} />,
+                text: "Anonymous voting — counts are public, identities hidden.",
+              },
+              {
+                icon: <LockIcon size={17} />,
+                text: "Proposer privacy — identity revealed only to get funded.",
+              },
+              {
+                icon: <BuildingIcon size={17} />,
+                text: "Stage-based vesting with reviewer approval.",
+              },
             ].map((item, i) => (
               <li key={i} className="flex items-center gap-3 text-white/90">
                 <span className="text-white/70">{item.icon}</span>
@@ -93,7 +121,7 @@ export function LoginPage() {
           </ul>
         </div>
         <p className="relative z-10 text-[12px] text-white/50">
-          Hackathon build · mock data · no on-chain funds moved
+          Hackathon build
         </p>
       </aside>
 
@@ -104,23 +132,31 @@ export function LoginPage() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 text-white">
                 <ShieldIcon size={20} />
               </span>
-              <span className="text-lg font-bold tracking-tight text-ink">GovFund</span>
+              <span className="text-lg font-bold tracking-tight text-ink">
+                GovFund
+              </span>
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-ink">Connect your Midnight wallet</h2>
+          <h2 className="text-xl font-bold text-ink">
+            Connect your Midnight wallet
+          </h2>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted">Required to prove who you are on-chain.</p>
+            <p className="text-sm text-muted">
+              Required to prove who you are on-chain.
+            </p>
             <NetworkPicker label="Network" />
           </div>
 
           <div className="mt-5">
             {wallets.length === 0 ? (
               <div className="rounded-xl border border-dashed border-line-strong bg-panel/50 p-5 text-center">
-                <p className="text-sm font-medium text-ink">No Midnight wallet detected</p>
+                <p className="text-sm font-medium text-ink">
+                  No Midnight wallet detected
+                </p>
                 <p className="mt-1 text-[13px] text-muted">
-                  Install a DApp Connector wallet extension (e.g. Lace or 1AM) and
-                  refresh this page.
+                  Install a DApp Connector wallet extension (e.g. Lace or 1AM)
+                  and refresh this page.
                 </p>
                 <Button
                   size="sm"
@@ -142,19 +178,31 @@ export function LoginPage() {
                       className="flex w-full items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-left transition-colors hover:border-primary-600 hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {w.icon ? (
-                        <img src={w.icon} alt="" className="h-7 w-7 rounded-lg" />
+                        <img
+                          src={w.icon}
+                          alt=""
+                          className="h-7 w-7 rounded-lg"
+                        />
                       ) : (
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-panel-strong text-muted">
                           <UsersIcon size={16} />
                         </span>
                       )}
                       <span className="flex-1">
-                        <span className="block text-sm font-semibold text-ink">{w.name}</span>
+                        <span className="block text-sm font-semibold text-ink">
+                          {w.name}
+                        </span>
                         <span className="block text-[12px] text-muted">
-                          {busy === w.rdns ? "Awaiting authorization…" : "Click to authorize"}
+                          {busy === w.rdns
+                            ? "Awaiting authorization…"
+                            : "Click to authorize"}
                         </span>
                       </span>
-                      <Button size="sm" variant="primary" loading={busy === w.rdns}>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        loading={busy === w.rdns}
+                      >
                         Connect
                       </Button>
                     </button>
@@ -188,14 +236,17 @@ export function LoginPage() {
                   <span className="block text-sm font-semibold text-ink">
                     {ROLE_LABELS[role]}
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-4 text-muted">{blurb}</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-muted">
+                    {blurb}
+                  </span>
                 </span>
               </button>
             ))}
           </div>
 
           <p className="mt-5 rounded-lg bg-panel px-3 py-2 text-[12px] text-muted">
-            Demo roles simulate on-chain identities locally; nothing is broadcast.
+            Demo roles simulate on-chain identities locally; nothing is
+            broadcast.
           </p>
         </div>
       </section>

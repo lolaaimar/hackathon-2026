@@ -1,36 +1,29 @@
-import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
-import {
-  CompiledContract,
-  Contract as CompactContract,
-} from "@midnight-ntwrk/midnight-js-protocol/compact-js";
-import {
-  deployContract,
-  findDeployedContract,
-} from "@midnight-ntwrk/midnight-js-contracts";
 import type {
-  DeployedContract,
-  FoundContract,
-} from "@midnight-ntwrk/midnight-js-contracts";
-import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
-import { toHex } from "@midnight-ntwrk/midnight-js-utils";
-import { GovFund, witnesses, createAdminState } from "../../contract/src/index.js";
-import type {
-  GovFundPrivateState,
   MerkleTreePath,
   ShieldedCoinInfo,
   Stage,
   ZswapCoinPublicKey,
 } from "../../contract/src/index.js";
-import { GovFundPrivateStateId } from "./common-types.js";
-import type {
-  GovFundContract,
-  GovFundProviders,
-} from "./common-types.js";
+import type { GovFundDeployedContract } from "./common-types.js";
 
 export * from "./common-types.js";
 export * from "../../contract/src/types.js";
 export * from "../../contract/src/witnesses.js";
+export { GovFund, ledger } from "../../contract/src/index.js";
+export type {
+  Ledger,
+  MerkleTreePath,
+  Maybe,
+  Proposal,
+  ProjectInfo,
+  ProjectStatus,
+  QualifiedShieldedCoinInfo,
+  ShieldedCoinInfo,
+  Stage,
+  Winner,
+  Witnesses,
+  ZswapCoinPublicKey,
+} from "../../contract/src/index.js";
 
 export type DeployArguments = {
   quorumPercentParam: bigint,
@@ -38,106 +31,6 @@ export type DeployArguments = {
   treasuryParam: ZswapCoinPublicKey,
   approvalsRequiredParam: bigint
 }
-
-/**
- * Absolute path to the compiled GovFund assets produced by `compactc`
- * (prover/verifier keys under `keys/`, ZKIRs under `zkir/`).
- */
-export const zkConfigPath = fileURLToPath(
-  new URL("../../contract/src/managed/govfund", import.meta.url),
-);
-
-/**
- * A Compact-js binding to the compiled GovFund contract: witnesses + the
- * location of the compiled file assets.
- */
-export const govfundCompiledContract = CompiledContract.make(
-  "GovFund",
-  GovFund,
-).pipe(
-  CompiledContract.withWitnesses(witnesses),
-  CompiledContract.withCompiledFileAssets(zkConfigPath),
-);
-
-/**
- * A filesystem-backed {@link ZKConfigProvider} for the GovFund circuits.
- * Reads prover/verifier keys and ZKIRs from `zkConfigPath`.
- *
- * @throws If the compiled proving keys are missing — run `npm run compile:zk`
- * to generate them (`npm run compile` uses `--skip-zk`).
- */
-export const createZkConfigProvider = () => {
-  const keysPath = fileURLToPath(
-    new URL("../../contract/src/managed/govfund/keys", import.meta.url),
-  );
-  if (!existsSync(keysPath)) {
-    throw new Error(
-      `GovFund proving keys not found under ${keysPath}. ` +
-        "Run `npm run compile:zk` to generate them (the default `compile` script uses --skip-zk).",
-    );
-  }
-  return new NodeZkConfigProvider(zkConfigPath);
-};
-
-/**
- * A deployed GovFund contract (freshly deployed or found), exposing the typed
- * `callTx` interface for every circuit.
- */
-export type GovFundDeployedContract =
-  | DeployedContract<GovFundContract>
-  | FoundContract<GovFundContract>;
-
-/**
- * Deploys the GovFund contract with the given constructor arguments.
- */
-export const deployGovFundContract = async (
-  providers: GovFundProviders,
-  args: DeployArguments,
-  adminSk: Uint8Array,
-) => {
-  return deployContract(providers, {
-    compiledContract: govfundCompiledContract,
-    privateStateId: GovFundPrivateStateId,
-    initialPrivateState: createAdminState(adminSk),
-    args: [ args.quorumPercentParam, args.fundingTokenParam, args.treasuryParam, args.approvalsRequiredParam ]
-  });
-}
-
-/**
- * Finds an already-deployed GovFund contract at `contractAddress`.
- *
- * Pass `initialPrivateState` to seed the caller's role: build it with the
- * exported role factories — `createAdminState(sk)`, `createMemberState(sk,
- * salt)` or `createCompanyState(sk, nonce, coinPk)`. The SDK stores it under
- * `GovFundPrivateStateId` (scoped to the contract address), reuses it on
- * subsequent calls and persists updates after each transaction. Note: seeding
- * a new role overwrites the previously stored one.
- *
- * Members need no data beyond their own `sk`/`salt`: the membership path is
- * derived from the public ledger tree at call time, so the only admin
- * involvement is the `addMember` transaction itself.
- */
-export const findGovFundContract = async (
-  providers: GovFundProviders,
-  options: {
-    readonly contractAddress: string;
-    readonly signingKey?: Uint8Array;
-    readonly initialPrivateState?: GovFundPrivateState;
-  },
-) => {
-  const base = {
-    compiledContract: govfundCompiledContract,
-    contractAddress: options.contractAddress,
-    signingKey: options.signingKey ? toHex(options.signingKey) : undefined,
-  };
-  return options.initialPrivateState !== undefined
-    ? findDeployedContract(providers, {
-        ...base,
-        privateStateId: GovFundPrivateStateId,
-        initialPrivateState: options.initialPrivateState,
-      })
-    : findDeployedContract(providers, base);
-};
 
 // ---------------------------- Membership views -----------------------------
 

@@ -3,7 +3,6 @@ import { pureCircuits } from "./managed/govfund/contract/index.js";
 import type {
   Ledger,
   MerkleTreePath,
-  Witnesses,
   ZswapCoinPublicKey,
 } from "./managed/govfund/contract/index.js";
 import { GovFundPrivateState } from "./types.js";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { ProjectHeader } from "../../components/ProjectHeader";
 import { ProposalList } from "../../components/ProposalList";
 import { StagePanel } from "../../components/StagePanel";
@@ -9,7 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ArrowLeftIcon, BuildingIcon, LockIcon } from "../../components/ui/icons";
-import { canSubmitProposal, canWithdraw, isWinner, mineOf } from "../../mock/guards";
+import { canSubmitProposal, canWithdraw, isWinner, mineOf } from "../../state/guards";
 import { fmtNight } from "../../lib/format";
 
 export function CompanyProjectDetail() {

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { Button } from "../../components/ui/Button";
 import { Card, CardHeader, Stat } from "../../components/ui/Card";
 import { Field, Input } from "../../components/ui/Field";
 import { AlertIcon, UsersIcon, XIcon } from "../../components/ui/icons";
-import { isDeployer, quorumMet, quorumNeeded } from "../../mock/guards";
+import { isDeployer, quorumMet, quorumNeeded } from "../../state/guards";
 import { fmtDate } from "../../lib/time";
 import { shortAddr } from "../../lib/format";
 

@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { ProjectCard } from "../../components/ProjectCard";
 import { Button } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { BuildingIcon, CheckIcon } from "../../components/ui/icons";
-import { canWithdraw, isWinner, mineOf } from "../../mock/guards";
+import { canWithdraw, isWinner, mineOf } from "../../state/guards";
 import { fmtNight } from "../../lib/format";
 import { timeFromNow } from "../../lib/time";
 import { DEMO_COMPANIES } from "../../types";

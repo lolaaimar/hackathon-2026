@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import { Button } from "./ui/Button";
 import { Field, Input, Textarea } from "./ui/Field";
 import { addDays } from "../lib/time";

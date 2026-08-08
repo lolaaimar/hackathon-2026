@@ -1,4 +1,4 @@
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { AlertIcon, CheckIcon, InfoIcon } from "./icons";
 
 export function ToastStack() {

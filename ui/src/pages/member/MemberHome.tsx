@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 import { ProjectCard } from "../../components/ProjectCard";
 import { CreateProjectForm } from "../../components/CreateProjectForm";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Stat } from "../../components/ui/Card";
 import { PlusIcon, UsersIcon } from "../../components/ui/icons";
-import { quorumNeeded } from "../../mock/guards";
+import { quorumNeeded } from "../../state/guards";
 import type { ProjectStatus } from "../../types";
 
 const FILTERS: ("All" | ProjectStatus)[] = [

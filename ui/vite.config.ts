@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import wasm from 'vite-plugin-wasm';
 import tailwindcss from '@tailwindcss/vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,7 +20,19 @@ export default defineConfig({
       events: 'events',
     },
   },
-  plugins: [react(), tailwindcss(), wasm()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    wasm(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: '../contract/src/managed/govfund',
+          dest: 'managed',
+        },
+      ],
+    }),
+  ],
   server: {
     fs: { allow: ['..'] },
   },

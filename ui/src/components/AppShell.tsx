@@ -1,8 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import { Button } from "./ui/Button";
-import { DemoClock } from "./DemoClock";
 import { ConfigModal } from "./ui/ConfigModal";
 import { ToastStack } from "./ui/ToastStack";
 import { CubeIcon, LogOutIcon, SettingsIcon, ShieldIcon, WalletIcon } from "./ui/icons";
@@ -60,7 +59,6 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      <DemoClock />
       <button
         onClick={() => setShowConfig(true)}
         className="fixed bottom-4 left-4 z-toast flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white/95 px-3 text-[12px] font-medium text-body shadow-lg shadow-ink/10 backdrop-blur transition-colors hover:border-primary-600 hover:text-ink"

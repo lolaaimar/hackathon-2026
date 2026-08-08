@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useGovFund } from "../mock/store";
+import { useGovFund } from "../state/provider";
 import { getSelectedNetwork, SUPPORTED_NETWORKS } from "../wallet/selectWallet";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -26,7 +26,7 @@ export function DeployPage() {
     SUPPORTED_NETWORKS.find((n) => n.id === getSelectedNetwork())?.label ??
     getSelectedNetwork();
 
-  const deploy = () => {
+  const deploy = async () => {
     const q = Number(quorum);
     const a = Number(approvals);
     if (!Number.isFinite(q) || q < 1 || q > 100) {
@@ -37,7 +37,7 @@ export function DeployPage() {
       toast("Approvals required must be between 1 and 100.", "error");
       return;
     }
-    dispatch({
+    await dispatch({
       type: "CONTRACT_DEPLOY",
       networkId: getSelectedNetwork(),
       fundingToken: "NIGHT",

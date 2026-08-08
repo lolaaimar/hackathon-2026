@@ -1,5 +1,5 @@
 import { Link, Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { useGovFund } from "./mock/store";
+import { useGovFund } from "./state/provider";
 import { AppShell } from "./components/AppShell";
 import { Button } from "./components/ui/Button";
 import { EmptyState } from "./components/ui/EmptyState";

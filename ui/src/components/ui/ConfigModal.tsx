@@ -3,7 +3,7 @@ import { Modal } from "./Modal";
 import { NetworkPicker } from "./NetworkPicker";
 import { Button } from "./Button";
 import { RefreshIcon } from "./icons";
-import { useGovFund } from "../../mock/store";
+import { useGovFund } from "../../state/provider";
 
 const STATE_KEY = "govfund.state.v1";
 const NETWORK_KEY = "govfund.networkId";
